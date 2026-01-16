@@ -1,0 +1,119 @@
+import { GlassCard } from '../components/ui/GlassCard';
+import { Button } from '../components/ui/Button';
+import { ArrowRight, DollarSign, TrendingUp, Zap } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
+
+export function Home() {
+    const time = new Date().getHours();
+    const greeting = time < 12 ? 'Good morning' : time < 18 ? 'Good afternoon' : 'Good evening';
+
+    return (
+        <div className="space-y-6 pb-20">
+            {/* Header */}
+            <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex justify-between items-end px-2"
+            >
+                <div>
+                    <h1 className="text-4xl font-bold tracking-tight text-gradient-blue">{greeting},</h1>
+                    <h2 className="text-4xl font-bold tracking-tight text-[var(--text-primary)]">Solano</h2>
+                </div>
+                <div className="flex items-center gap-3">
+                    <ThemeToggle />
+                    <div className="glass-panel rounded-full px-3 py-1 flex items-center">
+                        <span className="text-xs font-semibold text-[var(--ios-green)] flex items-center gap-1">
+                            <span className="w-2 h-2 rounded-full bg-[var(--ios-green)] animate-pulse" />
+                            System Online
+                        </span>
+                    </div>
+                </div>
+            </motion.div>
+
+            {/* Main Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* Priorities Widget - Takes full width on mobile if needed, or splits */}
+                <GlassCard className="col-span-1 md:col-span-2 space-y-4">
+                    <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                            <Zap size={20} className="text-[var(--ios-yellow)]" />
+                            Top Priorities
+                        </h3>
+                        <Button variant="ghost" size="sm">View All</Button>
+                    </div>
+
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-[var(--glass-bg-base)] border border-[var(--glass-border)] hover:bg-[var(--glass-shine)] transition-colors cursor-pointer group">
+                            <div className="w-5 h-5 rounded-full border-2 border-[var(--ios-bg-tertiary)] group-hover:border-[var(--ios-blue)] transition-colors" />
+                            <span className="flex-1 text-sm text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">
+                                {i === 1 ? 'Complete System Architecture Review' : i === 2 ? 'Finalize Budget Q1' : 'Email Team Updates'}
+                            </span>
+                            <span className="text-xs text-[var(--text-tertiary)]">Today</span>
+                        </div>
+                    ))}
+                </GlassCard>
+
+                {/* Projects Progress */}
+                <GlassCard className="space-y-4 hover-lift">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                            <TrendingUp size={20} className="text-[var(--ios-blue)]" />
+                            Active Project
+                        </h3>
+                        <ArrowRight size={16} className="text-[var(--text-tertiary)]" />
+                    </div>
+                    <div>
+                        <div className="flex justify-between mb-1">
+                            <span className="text-sm font-medium">Project S</span>
+                            <span className="text-sm text-[var(--ios-blue)]">75%</span>
+                        </div>
+                        <div className="h-2 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
+                            <div className="h-full bg-[var(--ios-blue)] w-[75%] rounded-full relative overflow-hidden">
+                                <div className="absolute inset-0 bg-white/20 animate-[pulse_2s_infinite]" />
+                            </div>
+                        </div>
+                        <p className="text-xs text-[var(--text-secondary)] mt-2">Next: Implementation Phase</p>
+                    </div>
+                </GlassCard>
+
+                {/* Financial Snapshot */}
+                <GlassCard className="space-y-4 hover-lift" variant="strong">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-semibold flex items-center gap-2">
+                            <DollarSign size={20} className="text-[var(--ios-green)]" />
+                            Finances
+                        </h3>
+                        <span className="text-xs bg-[var(--ios-green)]/20 text-[var(--ios-green)] px-2 py-0.5 rounded-full">+12%</span>
+                    </div>
+                    <div>
+                        <div className="text-3xl font-bold tracking-tight">$8,450.00</div>
+                        <p className="text-xs text-[var(--text-secondary)]">Available Balance</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <div className="h-10 w-full rounded-lg bg-[var(--glass-shine)] flex items-center justify-center">
+                            <div className="h-full bg-[var(--ios-green)] w-[60%] rounded-l-lg" />
+                        </div>
+                    </div>
+                </GlassCard>
+
+                {/* Next Event */}
+                <GlassCard className="col-span-1 md:col-span-2 flex items-center justify-between hover-lift">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-[var(--ios-red)]/20 flex items-center justify-center text-[var(--ios-red)] flex-col leading-none">
+                            <span className="text-[10px] font-bold uppercase">Jan</span>
+                            <span className="text-lg font-bold">15</span>
+                        </div>
+                        <div>
+                            <h4 className="font-semibold">Strategy Meeting</h4>
+                            <p className="text-xs text-[var(--text-secondary)]">10:00 AM • Google Meet</p>
+                        </div>
+                    </div>
+                    <Button size="sm" variant="secondary">Join</Button>
+                </GlassCard>
+
+            </div>
+        </div>
+    );
+}
