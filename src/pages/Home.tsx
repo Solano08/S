@@ -1,14 +1,15 @@
 import { motion } from 'framer-motion';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 import {
-    ArrowUpRight,
-    Plus,
-    Calendar as CalendarIcon,
-    Wallet,
-    CheckCircle2,
-    Sparkles,
-    Target,
-    TrendingUp
-} from 'lucide-react';
+    SFArrowUpRight,
+    SFPlus,
+    SFCalendar,
+    SFWallet,
+    SFCheckCircle,
+    SFSparkles,
+    SFTarget,
+    SFTrendingUp
+} from '../components/ui/SFIcons';
 
 export function Home() {
     const time = new Date().getHours();
@@ -45,19 +46,21 @@ export function Home() {
                     >
                         {new Date().toLocaleDateString('es-ES', { weekday: 'long', month: 'long', day: 'numeric' })}
                     </motion.span>
-                    <motion.h1
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.08 }}
-                        className="app-title"
-                    >
-                        {greeting}, Solano
-                    </motion.h1>
-                    <span className="app-subtitle">Centro de control personal</span>
-                    <div className="app-header-actions">
-                        <button className="icon-button" aria-label="Notas rápidas">
-                            <Plus size={18} />
-                        </button>
+                    <div className="app-header-row">
+                        <motion.h1
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.08 }}
+                            className="app-title"
+                        >
+                            {greeting}, Solano
+                        </motion.h1>
+                        <div className="app-header-actions">
+                            <button className="icon-button" aria-label="Notas rápidas">
+                                <SFPlus size={18} />
+                            </button>
+                            <ThemeToggle />
+                        </div>
                     </div>
                 </div>
             </header>
@@ -76,7 +79,7 @@ export function Home() {
                                 <h2 className="hero-title">Mantén foco en finanzas, objetivos y agenda</h2>
                             </div>
                             <div className="hero-icon">
-                                <Sparkles size={18} />
+                                <SFSparkles size={18} />
                             </div>
                         </div>
                         <div className="hero-metrics">
@@ -106,22 +109,22 @@ export function Home() {
                 <motion.section variants={itemVariants} className="app-section">
                     <div className="section-title">
                         <h3>Acciones rápidas</h3>
-                        <button className="link-button">
-                            Editar
-                            <ArrowUpRight size={14} />
+                            <button className="link-button">
+                                Editar
+                                <SFArrowUpRight size={14} />
                         </button>
                     </div>
                     <div className="quick-actions">
                         <button className="quick-action">
-                            <Wallet size={18} />
+                                <SFWallet size={18} />
                             Registrar gasto
                         </button>
                         <button className="quick-action">
-                            <Target size={18} />
+                                <SFTarget size={18} />
                             Nuevo objetivo
                         </button>
                         <button className="quick-action">
-                            <CalendarIcon size={18} />
+                                <SFCalendar size={18} />
                             Agendar evento
                         </button>
                     </div>
@@ -135,7 +138,7 @@ export function Home() {
                     <div className="list-card">
                         <div className="list-item">
                             <div className="list-icon">
-                                <Wallet size={18} />
+                                <SFWallet size={18} />
                             </div>
                             <div className="list-content">
                                 <p>Ingresos</p>
@@ -145,7 +148,7 @@ export function Home() {
                         </div>
                         <div className="list-item">
                             <div className="list-icon">
-                                <TrendingUp size={18} />
+                                <SFTrendingUp size={18} />
                             </div>
                             <div className="list-content">
                                 <p>Gastos</p>
@@ -187,7 +190,7 @@ export function Home() {
                     <div className="list-card">
                         <div className="list-item">
                             <div className="list-icon">
-                                <CalendarIcon size={18} />
+                                <SFCalendar size={18} />
                             </div>
                             <div className="list-content">
                                 <p>Revisión semanal</p>
@@ -197,7 +200,7 @@ export function Home() {
                         </div>
                         <div className="list-item">
                             <div className="list-icon">
-                                <CheckCircle2 size={18} />
+                                <SFCheckCircle size={18} />
                             </div>
                             <div className="list-content">
                                 <p>Planificación mensual</p>

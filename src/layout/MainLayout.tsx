@@ -18,7 +18,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                 <div className="absolute bottom-[-10%] right-[-10%] w-[80%] h-[80%] bg-[rgba(94,92,230,0.08)] rounded-full blur-[120px] animate-breathe" style={{ animationDelay: '4s' }} />
             </div>
 
-            <main className="h-full w-full pt-[env(safe-area-inset-top)] pb-[calc(var(--tabbar-height)+env(safe-area-inset-bottom))] px-4 sm:px-6 flex flex-col relative z-0">
+            <main className="main-screen h-full w-full pt-[env(safe-area-inset-top)] pb-[calc(var(--tabbar-height)+env(safe-area-inset-bottom))] px-4 sm:px-6 flex flex-col relative z-0">
                 <AnimatePresence mode="popLayout">
                     <motion.div
                         key={location.pathname}
