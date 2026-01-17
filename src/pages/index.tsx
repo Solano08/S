@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 import {
     SFBriefcase,
     SFArrowUpRight,
@@ -221,13 +222,19 @@ export const Finances = () => {
 };
 
 export const Calendar = () => {
+    const [calendarOpen, setCalendarOpen] = useState(false);
+
     return (
         <div className="app-screen">
             <header className="app-header">
                 <div className="app-title-group">
                     <span className="app-date">Calendario</span>
                     <h1 className="app-title">Agenda clara y accionable</h1>
-                    <span className="app-subtitle">Planifica tu semana</span>
+                    <div className="day-status-row">
+                        <span className="day-status-date">Viernes, 16 de enero</span>
+                        <span className="day-status-dot day-status-focus" />
+                        <span className="day-status-label day-status-focus">Día de enfoque</span>
+                    </div>
                 </div>
                 <div className="app-header-actions">
                     <QuickActionsMenu />
@@ -242,22 +249,30 @@ export const Calendar = () => {
                                 <p className="hero-eyebrow">Hoy</p>
                                 <h2 className="hero-title">2 eventos pendientes</h2>
                             </div>
-                            <div className="hero-icon">
+                            <button
+                                className="hero-icon-button"
+                                aria-label="Abrir calendario"
+                                onClick={() => setCalendarOpen(true)}
+                            >
                                 <SFCalendar size={18} />
-                            </div>
+                            </button>
                         </div>
-                        <div className="hero-metrics">
-                            <div>
-                                <span className="hero-metric-value">10:00</span>
-                                <span className="hero-metric-label">Próximo</span>
+                        <div className="day-event-list horizontal">
+                            <div className="day-event-item horizontal">
+                                <div className="day-event-badge">16</div>
+                                <div className="day-event-info">
+                                    <span className="day-event-title">Revisión semanal</span>
+                                    <span className="day-event-meta">Planificación y prioridades</span>
+                                    <span className="day-event-time-range">08:00 - 09:30</span>
+                                </div>
                             </div>
-                            <div>
-                                <span className="hero-metric-value">45m</span>
-                                <span className="hero-metric-label">Duración</span>
-                            </div>
-                            <div>
-                                <span className="hero-metric-value">3</span>
-                                <span className="hero-metric-label">Semana</span>
+                            <div className="day-event-item horizontal">
+                                <div className="day-event-badge">16</div>
+                                <div className="day-event-info">
+                                    <span className="day-event-title">Trabajo profundo</span>
+                                    <span className="day-event-meta">Bloque sin interrupciones</span>
+                                    <span className="day-event-time-range">14:00 - 15:30</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -268,82 +283,104 @@ export const Calendar = () => {
                         <h3>Agenda de hoy</h3>
                         <span className="pill">Viernes</span>
                     </div>
-                    <div className="calendar-card">
-                        <div className="calendar-tabs">
-                            <button className="calendar-tab calendar-tab-active">Semana</button>
-                            <button className="calendar-tab">Mes</button>
-                            <button className="calendar-tab">Año</button>
-                        </div>
-                        <div className="calendar-month">Enero 2026</div>
-                        <div className="calendar-grid">
-                            <div className="calendar-day calendar-day-muted">L</div>
-                            <div className="calendar-day calendar-day-muted">M</div>
-                            <div className="calendar-day calendar-day-muted">M</div>
-                            <div className="calendar-day calendar-day-muted">J</div>
-                            <div className="calendar-day calendar-day-muted">V</div>
-                            <div className="calendar-day calendar-day-muted">S</div>
-                            <div className="calendar-day calendar-day-muted">D</div>
-                            <div className="calendar-day calendar-day-muted">30</div>
-                            <div className="calendar-day calendar-day-muted">31</div>
-                            <div className="calendar-day">1</div>
-                            <div className="calendar-day">2</div>
-                            <div className="calendar-day">3</div>
-                            <div className="calendar-day">4</div>
-                            <div className="calendar-day">5</div>
-                            <div className="calendar-day calendar-day-active">6</div>
-                            <div className="calendar-day">7</div>
-                            <div className="calendar-day">8</div>
-                            <div className="calendar-day">9</div>
-                            <div className="calendar-day">10</div>
-                            <div className="calendar-day">11</div>
-                            <div className="calendar-day">12</div>
-                            <div className="calendar-day">13</div>
-                            <div className="calendar-day">14</div>
-                            <div className="calendar-day">15</div>
-                            <div className="calendar-day">16</div>
-                            <div className="calendar-day">17</div>
-                            <div className="calendar-day">18</div>
-                            <div className="calendar-day">19</div>
-                            <div className="calendar-day">20</div>
-                            <div className="calendar-day">21</div>
-                            <div className="calendar-day">22</div>
-                            <div className="calendar-day">23</div>
-                            <div className="calendar-day">24</div>
-                            <div className="calendar-day">25</div>
-                            <div className="calendar-day">26</div>
-                            <div className="calendar-day">27</div>
-                            <div className="calendar-day">28</div>
-                            <div className="calendar-day">29</div>
-                            <div className="calendar-day">30</div>
-                            <div className="calendar-day calendar-day-muted">1</div>
-                            <div className="calendar-day calendar-day-muted">2</div>
-                            <div className="calendar-day calendar-day-muted">3</div>
-                        </div>
-                    </div>
                     <div className="list-card">
                         <div className="list-item">
                             <div className="list-icon">
                                 <SFClock size={18} />
                             </div>
                             <div className="list-content">
-                                <p>Revisión semanal</p>
-                                <span>10:00 AM · Google Meet</span>
+                                <p>Enviar correo al SENA</p>
+                                <span>10:00 AM</span>
                             </div>
-                            <span className="list-time">30 min</span>
+                            <span className="list-time">Prioridad alta</span>
                         </div>
                         <div className="list-item">
                             <div className="list-icon">
                                 <SFClock size={18} />
                             </div>
                             <div className="list-content">
-                                <p>Trabajo profundo</p>
-                                <span>2:00 PM · Sin interrupciones</span>
+                                <p>Mandado de mi mamá</p>
+                                <span>Comprar carne</span>
                             </div>
-                            <span className="list-time">90 min</span>
+                            <span className="list-time">Pendiente</span>
                         </div>
                     </div>
                 </section>
             </div>
+
+            {calendarOpen && (
+                <div className="calendar-modal">
+                    <button
+                        className="calendar-backdrop"
+                        aria-label="Cerrar calendario"
+                        onClick={() => setCalendarOpen(false)}
+                    />
+                    <motion.div
+                        className="calendar-modal-card"
+                        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 12, scale: 0.98 }}
+                        transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
+                    >
+                        <div className="section-title">
+                            <h3>Calendario</h3>
+                            <span className="pill">Semana</span>
+                        </div>
+                        <div className="calendar-card">
+                            <div className="calendar-tabs">
+                                <button className="calendar-tab calendar-tab-active">Semana</button>
+                                <button className="calendar-tab">Mes</button>
+                                <button className="calendar-tab">Año</button>
+                            </div>
+                            <div className="calendar-month">Enero 2026</div>
+                            <div className="calendar-grid">
+                                <div className="calendar-day calendar-day-muted">L</div>
+                                <div className="calendar-day calendar-day-muted">M</div>
+                                <div className="calendar-day calendar-day-muted">M</div>
+                                <div className="calendar-day calendar-day-muted">J</div>
+                                <div className="calendar-day calendar-day-muted">V</div>
+                                <div className="calendar-day calendar-day-muted">S</div>
+                                <div className="calendar-day calendar-day-muted">D</div>
+                                <div className="calendar-day calendar-day-muted">30</div>
+                                <div className="calendar-day calendar-day-muted">31</div>
+                                <div className="calendar-day">1</div>
+                                <div className="calendar-day">2</div>
+                                <div className="calendar-day">3</div>
+                                <div className="calendar-day">4</div>
+                                <div className="calendar-day">5</div>
+                                <div className="calendar-day calendar-day-active">6</div>
+                                <div className="calendar-day">7</div>
+                                <div className="calendar-day">8</div>
+                                <div className="calendar-day">9</div>
+                                <div className="calendar-day">10</div>
+                                <div className="calendar-day">11</div>
+                                <div className="calendar-day">12</div>
+                                <div className="calendar-day">13</div>
+                                <div className="calendar-day">14</div>
+                                <div className="calendar-day">15</div>
+                                <div className="calendar-day">16</div>
+                                <div className="calendar-day">17</div>
+                                <div className="calendar-day">18</div>
+                                <div className="calendar-day">19</div>
+                                <div className="calendar-day">20</div>
+                                <div className="calendar-day">21</div>
+                                <div className="calendar-day">22</div>
+                                <div className="calendar-day">23</div>
+                                <div className="calendar-day">24</div>
+                                <div className="calendar-day">25</div>
+                                <div className="calendar-day">26</div>
+                                <div className="calendar-day">27</div>
+                                <div className="calendar-day">28</div>
+                                <div className="calendar-day">29</div>
+                                <div className="calendar-day">30</div>
+                                <div className="calendar-day calendar-day-muted">1</div>
+                                <div className="calendar-day calendar-day-muted">2</div>
+                                <div className="calendar-day calendar-day-muted">3</div>
+                            </div>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
         </div>
     );
 };

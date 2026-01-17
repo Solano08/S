@@ -37,9 +37,9 @@ export function QuickActionsMenu() {
                 animate={open ? "open" : "closed"}
                 variants={{
                     open: { height: "auto", opacity: 1, y: 0 },
-                    closed: { height: 0, opacity: 0, y: -6 }
+                    closed: { height: 0, opacity: 0, y: -4 }
                 }}
-                transition={{ duration: 0.25, ease: [0.2, 0.8, 0.2, 1] }}
+                transition={{ duration: 0.2, ease: [0.25, 0.8, 0.25, 1] }}
                 style={{ overflow: "hidden" }}
                 className="quick-actions-dropdown"
             >
