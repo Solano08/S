@@ -1,6 +1,5 @@
 import { motion } from 'framer-motion';
 import {
-    SFPlus,
     SFBriefcase,
     SFArrowUpRight,
     SFCheckCircle,
@@ -12,26 +11,10 @@ import {
     SFLightbulb,
     SFStar
 } from '../components/ui/SFIcons';
+import { QuickActionsMenu } from '../components/ui/QuickActionsMenu';
 
 export { Home } from './Home';
 export const Projects = () => {
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { staggerChildren: 0.08 }
-        }
-    };
-
-    const itemVariants = {
-        hidden: { opacity: 0, y: 10 },
-        visible: {
-            opacity: 1,
-            y: 0,
-            transition: { type: "spring", stiffness: 200, damping: 22 } as any
-        }
-    };
-
     return (
         <div className="app-screen">
             <header className="app-header">
@@ -41,19 +24,12 @@ export const Projects = () => {
                     <span className="app-subtitle">Prioriza, monitorea y cierra</span>
                 </div>
                 <div className="app-header-actions">
-                    <button className="icon-button" aria-label="Nuevo proyecto">
-                        <SFPlus size={18} />
-                    </button>
+                    <QuickActionsMenu />
                 </div>
             </header>
 
-            <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="app-content"
-            >
-                <motion.section variants={itemVariants} className="app-section">
+            <div className="app-content">
+                <section className="app-section">
                     <div className="hero-card">
                         <div className="hero-header">
                             <div>
@@ -79,9 +55,9 @@ export const Projects = () => {
                             </div>
                         </div>
                     </div>
-                </motion.section>
+                </section>
 
-                <motion.section variants={itemVariants} className="app-section">
+                <section className="app-section">
                     <div className="section-title">
                         <h3>Prioridad hoy</h3>
                         <button className="link-button">
@@ -111,9 +87,9 @@ export const Projects = () => {
                             <span className="list-time">60%</span>
                         </div>
                     </div>
-                </motion.section>
+                </section>
 
-                <motion.section variants={itemVariants} className="app-section">
+                <section className="app-section">
                     <div className="section-title">
                         <h3>Plantillas</h3>
                         <span className="pill">3 disponibles</span>
@@ -140,21 +116,12 @@ export const Projects = () => {
                             <SFArrowUpRight size={16} className="text-[var(--text-tertiary)]" />
                         </div>
                     </div>
-                </motion.section>
-            </motion.div>
+                </section>
+            </div>
         </div>
     );
 };
 export const Finances = () => {
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1, transition: { staggerChildren: 0.08 } }
-    };
-    const itemVariants = {
-        hidden: { opacity: 0, y: 10 },
-        visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 200, damping: 22 } as any }
-    };
-
     return (
         <div className="app-screen">
             <header className="app-header">
@@ -164,14 +131,12 @@ export const Finances = () => {
                     <span className="app-subtitle">Balance, ingresos y gastos</span>
                 </div>
                 <div className="app-header-actions">
-                    <button className="icon-button" aria-label="Nuevo movimiento">
-                        <SFPlus size={18} />
-                    </button>
+                    <QuickActionsMenu />
                 </div>
             </header>
 
-            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="app-content">
-                <motion.section variants={itemVariants} className="app-section">
+            <div className="app-content">
+                <section className="app-section">
                     <div className="hero-card">
                         <div className="hero-header">
                             <div>
@@ -197,9 +162,9 @@ export const Finances = () => {
                             </div>
                         </div>
                     </div>
-                </motion.section>
+                </section>
 
-                <motion.section variants={itemVariants} className="app-section">
+                <section className="app-section">
                     <div className="section-title">
                         <h3>Movimientos recientes</h3>
                         <span className="pill">Hoy</span>
@@ -226,9 +191,9 @@ export const Finances = () => {
                             <span className="list-time negative">-$86</span>
                         </div>
                     </div>
-                </motion.section>
+                </section>
 
-                <motion.section variants={itemVariants} className="app-section">
+                <section className="app-section">
                     <div className="section-title">
                         <h3>Presupuesto</h3>
                         <span className="pill">62% usado</span>
@@ -249,22 +214,13 @@ export const Finances = () => {
                             <button className="link-button">Ajustar</button>
                         </div>
                     </div>
-                </motion.section>
-            </motion.div>
+                </section>
+            </div>
         </div>
     );
 };
 
 export const Calendar = () => {
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1, transition: { staggerChildren: 0.08 } }
-    };
-    const itemVariants = {
-        hidden: { opacity: 0, y: 10 },
-        visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 200, damping: 22 } as any }
-    };
-
     return (
         <div className="app-screen">
             <header className="app-header">
@@ -274,14 +230,12 @@ export const Calendar = () => {
                     <span className="app-subtitle">Planifica tu semana</span>
                 </div>
                 <div className="app-header-actions">
-                    <button className="icon-button" aria-label="Nuevo evento">
-                        <SFPlus size={18} />
-                    </button>
+                    <QuickActionsMenu />
                 </div>
             </header>
 
-            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="app-content">
-                <motion.section variants={itemVariants} className="app-section">
+            <div className="app-content">
+                <section className="app-section">
                     <div className="hero-card">
                         <div className="hero-header">
                             <div>
@@ -307,9 +261,9 @@ export const Calendar = () => {
                             </div>
                         </div>
                     </div>
-                </motion.section>
+                </section>
 
-                <motion.section variants={itemVariants} className="app-section">
+                <section className="app-section">
                     <div className="section-title">
                         <h3>Agenda de hoy</h3>
                         <span className="pill">Viernes</span>
@@ -388,22 +342,13 @@ export const Calendar = () => {
                             <span className="list-time">90 min</span>
                         </div>
                     </div>
-                </motion.section>
-            </motion.div>
+                </section>
+            </div>
         </div>
     );
 };
 
 export const Ideas = () => {
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: { opacity: 1, transition: { staggerChildren: 0.08 } }
-    };
-    const itemVariants = {
-        hidden: { opacity: 0, y: 10 },
-        visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 200, damping: 22 } as any }
-    };
-
     return (
         <div className="app-screen">
             <header className="app-header">
@@ -413,14 +358,12 @@ export const Ideas = () => {
                     <span className="app-subtitle">Organiza y prioriza</span>
                 </div>
                 <div className="app-header-actions">
-                    <button className="icon-button" aria-label="Nueva idea">
-                        <SFPlus size={18} />
-                    </button>
+                    <QuickActionsMenu />
                 </div>
             </header>
 
-            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="app-content">
-                <motion.section variants={itemVariants} className="app-section">
+            <div className="app-content">
+                <section className="app-section">
                     <div className="hero-card">
                         <div className="hero-header">
                             <div>
@@ -446,9 +389,9 @@ export const Ideas = () => {
                             </div>
                         </div>
                     </div>
-                </motion.section>
+                </section>
 
-                <motion.section variants={itemVariants} className="app-section">
+                <section className="app-section">
                     <div className="section-title">
                         <h3>Recientes</h3>
                         <span className="pill">Hoy</span>
@@ -475,9 +418,9 @@ export const Ideas = () => {
                             <SFArrowUpRight size={16} className="text-[var(--text-tertiary)]" />
                         </div>
                     </div>
-                </motion.section>
+                </section>
 
-                <motion.section variants={itemVariants} className="app-section">
+                <section className="app-section">
                     <div className="section-title">
                         <h3>Favoritas</h3>
                         <span className="pill">1</span>
@@ -494,8 +437,8 @@ export const Ideas = () => {
                             <SFArrowUpRight size={16} className="text-[var(--text-tertiary)]" />
                         </div>
                     </div>
-                </motion.section>
-            </motion.div>
+                </section>
+            </div>
         </div>
     );
 };

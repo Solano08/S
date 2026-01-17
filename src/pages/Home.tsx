@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
+import { QuickActionsMenu } from '../components/ui/QuickActionsMenu';
 import {
     SFArrowUpRight,
-    SFPlus,
     SFCalendar,
     SFWallet,
     SFCheckCircle,
@@ -56,10 +56,8 @@ export function Home() {
                             {greeting}, Solano
                         </motion.h1>
                         <div className="app-header-actions">
-                            <button className="icon-button" aria-label="Notas rápidas">
-                                <SFPlus size={18} />
-                            </button>
                             <ThemeToggle />
+                            <QuickActionsMenu />
                         </div>
                     </div>
                 </div>
@@ -103,30 +101,6 @@ export function Home() {
                             <span className="chip">Gasto controlado</span>
                             <span className="chip">Rutina estable</span>
                         </div>
-                    </div>
-                </motion.section>
-
-                <motion.section variants={itemVariants} className="app-section">
-                    <div className="section-title">
-                        <h3>Acciones rápidas</h3>
-                            <button className="link-button">
-                                Editar
-                                <SFArrowUpRight size={14} />
-                        </button>
-                    </div>
-                    <div className="quick-actions">
-                        <button className="quick-action">
-                                <SFWallet size={18} />
-                            Registrar gasto
-                        </button>
-                        <button className="quick-action">
-                                <SFTarget size={18} />
-                            Nuevo objetivo
-                        </button>
-                        <button className="quick-action">
-                                <SFCalendar size={18} />
-                            Agendar evento
-                        </button>
                     </div>
                 </motion.section>
 

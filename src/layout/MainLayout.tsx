@@ -19,14 +19,14 @@ export function MainLayout({ children }: MainLayoutProps) {
             </div>
 
             <main className="main-screen h-full w-full pt-[env(safe-area-inset-top)] pb-[calc(var(--tabbar-height)+env(safe-area-inset-bottom))] px-4 sm:px-6 flex flex-col relative z-0">
-                <AnimatePresence mode="popLayout">
+                <AnimatePresence mode="wait" initial={false}>
                     <motion.div
                         key={location.pathname}
-                        initial={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
-                        animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                        exit={{ opacity: 0, scale: 1.05, filter: 'blur(10px)' }}
-                        transition={{ duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
-                        className="flex-1 flex flex-col items-center justify-center h-full w-full"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8 }}
+                        transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+                        className="flex-1 flex flex-col items-center justify-center h-full w-full will-change-transform will-change-opacity"
                     >
                         {children}
                     </motion.div>

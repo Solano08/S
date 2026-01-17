@@ -423,8 +423,20 @@ body {
   margin-top: 0;
   margin-left: auto;
   padding-right: 0;
-  margin-right: -12px;
-  padding-left: 8px;
+  margin-right: 0;
+  padding-left: 0;
+}
+
+.quick-actions-trigger {
+  position: relative;
+}
+
+.quick-actions-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  width: 220px;
 }
 
 .icon-button,
@@ -767,6 +779,40 @@ body {
   align-items: center;
   gap: 10px;
   justify-content: flex-start;
+}
+
+.quick-actions-panel {
+  margin: 0 auto 8px;
+  width: 100%;
+  max-width: var(--content-max);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  box-shadow: var(--shadow-sm);
+}
+
+.quick-action-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: #ffffff;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.quick-action-item:active {
+  transform: scale(0.98);
+}
+
+.light .quick-action-item {
+  background: #ffffff;
 }
 
 .goal-card {
