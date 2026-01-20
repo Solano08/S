@@ -12,7 +12,7 @@ import {
 } from '../components/ui/SFIcons';
 
 export function Home() {
-    const { balance, income, expenses, tasks } = useAppData();
+    const { balance, income, expenses, tasks, events } = useAppData();
     const today = useToday();
     const time = new Date().getHours();
     const greeting = time < 12 ? 'Buenos días' : time < 18 ? 'Buenas tardes' : 'Buenas noches';
@@ -102,7 +102,7 @@ export function Home() {
                                 <span className="hero-metric-label">Objetivos</span>
                             </div>
                             <div>
-                                <span className="hero-metric-value">{tasks.length}</span>
+                                <span className="hero-metric-value">{events.length}</span>
                                 <span className="hero-metric-label">Eventos</span>
                             </div>
                         </div>
@@ -130,7 +130,7 @@ export function Home() {
                                 <p>Ingresos</p>
                                 <span>${income.toLocaleString('es-CO')} recibidos</span>
                             </div>
-                            <span className="list-time positive">+{Math.round((income / Math.max(income, 1)) * 100)}%</span>
+                            <span className="list-time positive">+{income > 0 ? Math.round((income / Math.max(income + expenses, 1)) * 100) : 0}%</span>
                         </div>
                         <div className="list-item">
                             <div className="list-icon">

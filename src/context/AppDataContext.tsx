@@ -121,11 +121,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             if (!supabase) return;
             
             try {
-                const [tasksResult, transactionsResult, eventsResult, overviewResult] = await Promise.all([
+                const [tasksResult, transactionsResult, eventsResult, overviewResult, habitsResult] = await Promise.all([
                     supabase.from('tasks').select('*').order('created_at', { ascending: true }),
                     supabase.from('transactions').select('*').order('created_at', { ascending: false }),
                     supabase.from('events').select('*').order('event_date', { ascending: true }),
-                    supabase.from('app_overview').select('*').order('updated_at', { ascending: false }).limit(1)
+                    supabase.from('app_overview').select('*').order('updated_at', { ascending: false }).limit(1),
+                    supabase.from('habits').select('*').order('created_at', { ascending: false })
                 ]);
 
                 if (!active) return;
