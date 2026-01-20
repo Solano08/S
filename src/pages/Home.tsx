@@ -1,9 +1,9 @@
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { QuickActionsMenu } from '../components/ui/QuickActionsMenu';
+import { useAppData } from '../context/AppDataContext';
+import { useToday } from '../hooks/useToday';
 import {
-    SFArrowUpRight,
-    SFCalendar,
     SFWallet,
     SFCheckCircle,
     SFSparkles,
@@ -12,10 +12,17 @@ import {
 } from '../components/ui/SFIcons';
 
 export function Home() {
+    const { balance, income, expenses, tasks } = useAppData();
+    const today = useToday();
     const time = new Date().getHours();
     const greeting = time < 12 ? 'Buenos días' : time < 18 ? 'Buenas tardes' : 'Buenas noches';
+    const dateLabel = today.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric'
+    });
 
-    const containerVariants = {
+    const containerVariants: Variants = {
         hidden: { opacity: 0 },
         visible: {
             opacity: 1,
@@ -25,13 +32,13 @@ export function Home() {
         }
     };
 
-    const itemVariants = {
+    const itemVariants: Variants = {
         hidden: { opacity: 0, scale: 0.9, y: 10 },
         visible: {
             opacity: 1,
             scale: 1,
             y: 0,
-            transition: { type: "spring", stiffness: 200, damping: 20 } as any
+            transition: { type: "spring", stiffness: 200, damping: 20 }
         }
     };
 
@@ -44,7 +51,7 @@ export function Home() {
                         animate={{ opacity: 1, y: 0 }}
                         className="app-date"
                     >
-                        {new Date().toLocaleDateString('es-ES', { weekday: 'long', month: 'long', day: 'numeric' })}
+                        {dateLabel}
                     </motion.span>
                     <div className="app-header-row">
                         <motion.h1
@@ -57,7 +64,12 @@ export function Home() {
                         </motion.h1>
                         <div className="app-header-actions">
                             <ThemeToggle />
-                            <QuickActionsMenu />
+                            <QuickActionsMenu
+                                actions={[
+                                    { label: "Registrar gasto", icon: <SFWallet size={18} /> },
+                                    { label: "Nuevo objetivo", icon: <SFTarget size={18} /> }
+                                ]}
+                            />
                         </div>
                     </div>
                 </div>
@@ -82,20 +94,20 @@ export function Home() {
                         </div>
                         <div className="hero-metrics">
                             <div>
-                                <span className="hero-metric-value">$1.2k</span>
+                                <span className="hero-metric-value">${balance.toLocaleString('es-CO')}</span>
                                 <span className="hero-metric-label">Balance</span>
                             </div>
                             <div>
-                                <span className="hero-metric-value">3</span>
+                                <span className="hero-metric-value">0</span>
                                 <span className="hero-metric-label">Objetivos</span>
                             </div>
                             <div>
-                                <span className="hero-metric-value">2</span>
+                                <span className="hero-metric-value">{tasks.length}</span>
                                 <span className="hero-metric-label">Eventos</span>
                             </div>
                         </div>
                         <div className="hero-progress">
-                            <div className="hero-progress-bar" style={{ width: '68%' }} />
+                            <div className="hero-progress-bar" style={{ width: '0%' }} />
                         </div>
                         <div className="hero-chips">
                             <span className="chip">Gasto controlado</span>
@@ -116,9 +128,9 @@ export function Home() {
                             </div>
                             <div className="list-content">
                                 <p>Ingresos</p>
-                                <span>$3.450 recibidos</span>
+                                <span>${income.toLocaleString('es-CO')} recibidos</span>
                             </div>
-                            <span className="list-time positive">+12%</span>
+                            <span className="list-time positive">+{Math.round((income / Math.max(income, 1)) * 100)}%</span>
                         </div>
                         <div className="list-item">
                             <div className="list-icon">
@@ -126,9 +138,9 @@ export function Home() {
                             </div>
                             <div className="list-content">
                                 <p>Gastos</p>
-                                <span>$2.250 gastados</span>
+                                <span>${expenses.toLocaleString('es-CO')} gastados</span>
                             </div>
-                            <span className="list-time negative">-8%</span>
+                            <span className="list-time negative">-{Math.round((expenses / Math.max(income, 1)) * 100)}%</span>
                         </div>
                     </div>
                 </motion.section>
@@ -158,30 +170,21 @@ export function Home() {
 
                 <motion.section variants={itemVariants} className="app-section">
                     <div className="section-title">
-                        <h3>Agenda</h3>
-                        <span className="pill">Hoy</span>
+                        <h3>Tareas puntuales</h3>
                     </div>
                     <div className="list-card">
-                        <div className="list-item">
-                            <div className="list-icon">
-                                <SFCalendar size={18} />
+                        {tasks.slice(0, 2).map((task) => (
+                            <div className="list-item" key={task.id}>
+                                <div className="list-icon">
+                                    <SFCheckCircle size={18} />
+                                </div>
+                                <div className="list-content">
+                                    <p>{task.title}</p>
+                                    <span>{task.meta}</span>
+                                </div>
+                                <span className="list-time">{task.priority}</span>
                             </div>
-                            <div className="list-content">
-                                <p>Revisión semanal</p>
-                                <span>10:00 AM · Google Meet</span>
-                            </div>
-                            <span className="list-time">30 min</span>
-                        </div>
-                        <div className="list-item">
-                            <div className="list-icon">
-                                <SFCheckCircle size={18} />
-                            </div>
-                            <div className="list-content">
-                                <p>Planificación mensual</p>
-                                <span>Pendiente</span>
-                            </div>
-                            <span className="list-time">2/5</span>
-                        </div>
+                        ))}
                     </div>
                 </motion.section>
             </motion.div>

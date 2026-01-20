@@ -1,10 +1,31 @@
-import { useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
-import { SFPlus, SFLightbulb, SFWallet, SFTarget } from './SFIcons';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { SFPlus, SFLightbulb } from './SFIcons';
 
-export function QuickActionsMenu() {
+type QuickActionItem = {
+    label: string;
+    icon: ReactNode;
+    onClick?: () => void;
+};
+
+type QuickActionsMenuProps = {
+    actions?: QuickActionItem[];
+};
+
+export function QuickActionsMenu({ actions = [] }: QuickActionsMenuProps) {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const quickActions = useMemo(
+        () => [
+            {
+                label: "Agregar idea",
+                icon: <SFLightbulb size={18} />
+            },
+            ...actions
+        ],
+        [actions]
+    );
 
     useEffect(() => {
         function handlePointerDown(event: PointerEvent) {
@@ -32,32 +53,33 @@ export function QuickActionsMenu() {
             >
                 <SFPlus size={18} />
             </button>
-            <motion.div
-                initial={false}
-                animate={open ? "open" : "closed"}
-                variants={{
-                    open: { height: "auto", opacity: 1, y: 0 },
-                    closed: { height: 0, opacity: 0, y: -4 }
-                }}
-                transition={{ duration: 0.2, ease: [0.25, 0.8, 0.25, 1] }}
-                style={{ overflow: "hidden" }}
-                className="quick-actions-dropdown"
-            >
-                <div className="quick-actions-panel">
-                    <button className="quick-action-item">
-                        <SFLightbulb size={18} />
-                        Agregar idea
-                    </button>
-                    <button className="quick-action-item">
-                        <SFWallet size={18} />
-                        Registrar gasto
-                    </button>
-                    <button className="quick-action-item">
-                        <SFTarget size={18} />
-                        Nuevo objetivo
-                    </button>
-                </div>
-            </motion.div>
+            <AnimatePresence>
+                {open && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className="quick-actions-dropdown"
+                    >
+                        <div className="quick-actions-panel">
+                            {quickActions.map((action) => (
+                                <button
+                                    key={action.label}
+                                    className="quick-action-item"
+                                    onClick={() => {
+                                        action.onClick?.();
+                                        setOpen(false);
+                                    }}
+                                >
+                                    {action.icon}
+                                    {action.label}
+                                </button>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
-import { SFCalendar, SFDollar, SFBriefcase, SFLightbulb } from '../components/ui/SFIcons';
+import { SFCalendar, SFDollar, SFBriefcase, SFTarget } from '../components/ui/SFIcons';
 import { motion } from 'framer-motion';
 
 const navItems = [
@@ -8,7 +8,7 @@ const navItems = [
     { path: '/finances', icon: SFDollar, label: 'Ingresos' },
     { path: '/', icon: null, label: 'Inicio', isCenter: true },
     { path: '/projects', icon: SFBriefcase, label: 'Proyectos' },
-    { path: '/ideas', icon: SFLightbulb, label: 'Ideas' },
+    { path: '/ideas', icon: SFTarget, label: 'Hábitos' },
 ];
 
 export function BottomNav() {

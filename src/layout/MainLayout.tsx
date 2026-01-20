@@ -25,7 +25,7 @@ export function MainLayout({ children }: MainLayoutProps) {
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -8 }}
-                        transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+                        transition={{ duration: 0.15, ease: [0.2, 0.8, 0.2, 1] }}
                         className="flex-1 flex flex-col items-center justify-center h-full w-full will-change-transform will-change-opacity"
                     >
                         {children}
