@@ -1877,7 +1877,6 @@ export const Calendar = () => {
     const [eventTime, setEventTime] = useState("");
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
     const [editingEventId, setEditingEventId] = useState<string | null>(null);
-    const [openEventId, setOpenEventId] = useState<string | null>(null); // ID del evento que está abierto (deslizado)
     const { tasks, events, addTask, updateTask, deleteTask, addEvent, updateEvent, deleteEvent } = useAppData();
 
     // Logs de desarrollo deshabilitados para optimizar rendimiento
@@ -2810,10 +2809,6 @@ export const Calendar = () => {
         setCalendarOpen(true);
     };
 
-    const handleDeleteEvent = (id: string) => {
-        setDeleteConfirmModal({ type: 'event', id });
-    };
-
     const SwipeCompletedTaskItem = ({
         task
     }: {
@@ -3320,185 +3315,60 @@ export const Calendar = () => {
     }: {
         event: { id: string; title: string; meta: string; time: string; event_date?: string };
     }) => {
-        const isCurrentlyOpen = openEventId === event.id;
-        const [offset, setOffset] = useState(0);
-        const [open, setOpen] = useState(false);
-        const startXRef = useRef<number | null>(null);
-        const draggingRef = useRef(false);
-        const elementRef = useRef<HTMLDivElement>(null);
-
-        // Cerrar este evento si otro se abre
-        useEffect(() => {
-            if (!isCurrentlyOpen && open) {
-                // Si otro evento se abrió, cerrar este suavemente
-                setOffset(0);
-                setOpen(false);
-            }
-        }, [isCurrentlyOpen, open]);
-
-        const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-            // Si otro evento está abierto, cerrarlo primero
-            if (openEventId && openEventId !== event.id) {
-                setOpenEventId(null);
-            }
-            startXRef.current = e.clientX - offset;
-            draggingRef.current = true;
-            e.currentTarget.setPointerCapture(e.pointerId);
-            
-            // Handlers globales para el arrastre
-            const handlePointerMove = (moveEvent: PointerEvent) => {
-                if (!draggingRef.current || startXRef.current === null) return;
-                const deltaX = moveEvent.clientX - startXRef.current;
-                if (Math.abs(deltaX) < 3) return;
-                
-                const next = Math.max(-120, Math.min(0, deltaX));
-                setOffset(next);
-                
-                const willBeOpen = next < -30;
-                setOpen(willBeOpen);
-                
-                // Si se está abriendo, marcar como abierto (esto cerrará automáticamente otros)
-                if (willBeOpen && openEventId !== event.id) {
-                    setOpenEventId(event.id);
-                } else if (!willBeOpen && openEventId === event.id) {
-                    setOpenEventId(null);
-                }
-            };
-
-            const handlePointerUp = () => {
-                if (!draggingRef.current) return;
-                draggingRef.current = false;
-                
-                // Usar el offset actual
-                setOffset((currentOffset) => {
-                    if (currentOffset < -60) {
-                        // Abrir completamente
-                        setOpen(true);
-                        setOpenEventId(event.id);
-                        return -120;
-                    } else {
-                        // Cerrar
-                        setOpen(false);
-                        if (openEventId === event.id) {
-                            setOpenEventId(null);
-                        }
-                        return 0;
-                    }
-                });
-                
-                // Limpiar listeners
-                document.removeEventListener('pointermove', handlePointerMove);
-                document.removeEventListener('pointerup', handlePointerUp);
-            };
-            
-            // Agregar listeners globales para el arrastre
-            document.addEventListener('pointermove', handlePointerMove);
-            document.addEventListener('pointerup', handlePointerUp);
-        };
-
-        const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-            if (draggingRef.current) {
-                e.currentTarget.releasePointerCapture(e.pointerId);
-            }
-        };
-
-        const closeRow = () => {
-            setOffset(0);
-            setOpen(false);
-            if (openEventId === event.id) {
-                setOpenEventId(null);
-            }
-        };
-
-        const actionsTranslate = Math.max(0, 120 + offset);
-
         return (
-            <div className={clsx("swipe-row", open && "open")}>
-                <div
-                    className="swipe-actions"
-                    style={{ transform: `translateX(${actionsTranslate}px)` }}
-                >
-                    <button
-                        className="swipe-action edit"
-                        onClick={() => {
-                            closeRow();
-                            setOpenEventId(null);
-                            handleEditEvent(event.id);
-                        }}
-                    >
-                        Editar
-                    </button>
-                    <button
-                        className="swipe-action delete"
-                        onClick={() => {
-                            closeRow();
-                            setOpenEventId(null);
-                            handleDeleteEvent(event.id);
-                        }}
-                    >
-                        Eliminar
-                    </button>
-                </div>
-                <div
-                    ref={elementRef}
-                    className={clsx("day-event-item horizontal swipe-content", open && "open")}
-                    style={{ 
-                        transform: `translateX(${offset}px)`,
-                        transition: draggingRef.current ? 'none' : 'transform 0.2s ease-out',
-                        touchAction: 'pan-y',
-                        userSelect: 'none',
-                        WebkitUserSelect: 'none',
-                        cursor: draggingRef.current ? 'grabbing' : 'grab'
-                    }}
-                    onPointerDown={onPointerDown}
-                    onPointerUp={onPointerUp}
-                    onPointerCancel={onPointerUp}
-                >
-                    <button
-                        className="task-complete-button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (event?.id) {
-                                try {
-                                    updateEvent(event.id, { completed: true });
-                                } catch (error) {
-                                    console.error("Error completando evento:", error);
-                                }
+            <div 
+                className="day-event-item horizontal"
+                onClick={() => handleEditEvent(event.id)}
+                style={{ 
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    WebkitUserSelect: 'none'
+                }}
+            >
+                <button
+                    className="task-complete-button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (event?.id) {
+                            try {
+                                updateEvent(event.id, { completed: true });
+                            } catch (error) {
+                                console.error("Error completando evento:", error);
                             }
-                        }}
-                        aria-label="Completar evento"
-                    >
-                        <SFCheckCircle size={16} className="task-complete-icon" />
-                    </button>
-                    <div className="day-event-badge">
+                        }
+                    }}
+                    aria-label="Completar evento"
+                >
+                    <SFCheckCircle size={16} className="task-complete-icon" />
+                </button>
+                <div className="day-event-badge">
+                    {event?.event_date ? (() => {
+                        const eventDate = parseDateFromString(event.event_date);
+                        return eventDate.getDate();
+                    })() : ((today && today instanceof Date && !isNaN(today.getTime())) ? today.getDate() : new Date().getDate())}
+                </div>
+                <div className="day-event-info">
+                    <span className="day-event-title">{event?.title || 'Sin título'}</span>
+                    <span className="day-event-meta">
                         {event?.event_date ? (() => {
                             const eventDate = parseDateFromString(event.event_date);
-                            return eventDate.getDate();
-                        })() : ((today && today instanceof Date && !isNaN(today.getTime())) ? today.getDate() : new Date().getDate())}
-                    </div>
-                    <div className="day-event-info">
-                        <span className="day-event-title">{event?.title || 'Sin título'}</span>
-                        <span className="day-event-meta">
-                            {event?.event_date ? (() => {
-                                const eventDate = parseDateFromString(event.event_date);
-                                const isToday = formatDateLocal(eventDate) === todayDateString;
-                                if (isToday) {
-                                    // Si es hoy, mostrar descripción
-                                    return event?.meta || 'Sin descripción';
-                                } else {
-                                    // Si es futuro, mostrar fecha formateada
-                                    const dateLabel = eventDate.toLocaleDateString("es-ES", {
-                                        day: "numeric",
-                                        month: "short"
-                                    });
-                                    // Si hay descripción, mostrarla también
-                                    const meta = event?.meta ? ` · ${event.meta}` : '';
-                                    return `${dateLabel}${meta}`;
-                                }
-                            })() : (event?.meta || 'Sin descripción')}
-                        </span>
-                        <span className="day-event-time-range">{event?.time || 'Sin hora'}</span>
-                    </div>
+                            const isToday = formatDateLocal(eventDate) === todayDateString;
+                            if (isToday) {
+                                // Si es hoy, mostrar descripción
+                                return event?.meta || 'Sin descripción';
+                            } else {
+                                // Si es futuro, mostrar fecha formateada
+                                const dateLabel = eventDate.toLocaleDateString("es-ES", {
+                                    day: "numeric",
+                                    month: "short"
+                                });
+                                // Si hay descripción, mostrarla también
+                                const meta = event?.meta ? ` · ${event.meta}` : '';
+                                return `${dateLabel}${meta}`;
+                            }
+                        })() : (event?.meta || 'Sin descripción')}
+                    </span>
+                    <span className="day-event-time-range">{event?.time || 'Sin hora'}</span>
                 </div>
             </div>
         );
@@ -3665,15 +3535,7 @@ export const Calendar = () => {
                             </button>
                         </div>
                         {eventsCount > 0 ? (
-                            <div 
-                                className="day-event-list horizontal"
-                                onClick={(e) => {
-                                    // Si se hace clic en el contenedor (no en un evento), cerrar cualquier evento abierto
-                                    if (e.target === e.currentTarget) {
-                                        setOpenEventId(null);
-                                    }
-                                }}
-                            >
+                            <div className="day-event-list horizontal">
                                 {allUpcomingEvents.filter(event => event && event.id).map((event) => (
                                     <SwipeEventItem key={event.id} event={event} />
                                 ))}
@@ -4007,14 +3869,7 @@ export const Calendar = () => {
                                                     }}>
                                                         Eventos de esta fecha ({eventsForDate.length})
                                                     </div>
-                                                    <div 
-                                                        onClick={(e) => {
-                                                            // Si se hace clic en el contenedor (no en un evento), cerrar cualquier evento abierto
-                                                            if (e.target === e.currentTarget) {
-                                                                setOpenEventId(null);
-                                                            }
-                                                        }}
-                                                    >
+                                                    <div>
                                                         {eventsForDate.map((event) => (
                                                             <SwipeEventItem 
                                                                 key={event.id} 
@@ -4296,16 +4151,28 @@ export const Calendar = () => {
                                     </h4>
                                     
                                     {/* Estadística de tareas por día - Esquina superior derecha */}
-                                    <div style={{
-                                        background: 'var(--glass-bg-strong)',
-                                        backdropFilter: 'blur(12px) saturate(180%)',
-                                        WebkitBackdropFilter: 'blur(12px) saturate(180%)',
-                                        border: '0.5px solid var(--glass-border)',
-                                        borderRadius: '6px',
-                                        padding: '4px 8px',
-                                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-                                        flexShrink: 0
-                                    }}>
+                                    <div 
+                                        onClick={() => {
+                                            setCompletedModalOpen(true);
+                                            setCompletedModalFilter('all');
+                                        }}
+                                        style={{
+                                            background: 'var(--glass-bg-strong)',
+                                            backdropFilter: 'blur(12px) saturate(180%)',
+                                            WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                                            border: '0.5px solid var(--glass-border)',
+                                            borderRadius: '6px',
+                                            padding: '4px 8px',
+                                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                                            flexShrink: 0,
+                                            cursor: 'pointer',
+                                            userSelect: 'none',
+                                            WebkitUserSelect: 'none',
+                                            transition: 'transform 0.15s, box-shadow 0.15s'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
                                         <p style={{
                                             fontSize: '7px',
                                             fontWeight: '600',

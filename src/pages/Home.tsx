@@ -3,16 +3,19 @@ import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { QuickActionsMenu } from '../components/ui/QuickActionsMenu';
 import { useAppData } from '../context/AppDataContext';
 import { useToday } from '../hooks/useToday';
+import { GlassCard } from '../components/ui/GlassCard';
 import {
     SFWallet,
     SFCheckCircle,
     SFSparkles,
     SFTarget,
-    SFTrendingUp
+    SFTrendingUp,
+    SFArrowUpRight,
+    SFArrowDownRight
 } from '../components/ui/SFIcons';
 
 export function Home() {
-    const { balance, income, expenses, tasks, events } = useAppData();
+    const { balance, income, expenses, tasks, events, transactions } = useAppData();
     const today = useToday();
     const time = new Date().getHours();
     const greeting = time < 12 ? 'Buenos días' : time < 18 ? 'Buenas tardes' : 'Buenas noches';
@@ -21,6 +24,13 @@ export function Home() {
         month: 'long',
         day: 'numeric'
     });
+
+    // Calcular inversiones basado en transacciones de tipo 'Cripto' o 'Inversión'
+    const investments = useMemo(() => {
+        return (transactions || [])
+            .filter(t => ['Cripto', 'Inversión', 'Inversiones', 'Acciones'].includes(t.category))
+            .reduce((acc, t) => acc + Math.abs(t.amount), 0);
+    }, [transactions]);
 
     const containerVariants: Variants = {
         hidden: { opacity: 0 },
@@ -117,31 +127,74 @@ export function Home() {
                 </motion.section>
 
                 <motion.section variants={itemVariants} className="app-section">
-                    <div className="section-title">
+                    <div className="section-title mb-4">
                         <h3>Finanzas</h3>
                         <span className="pill">Este mes</span>
                     </div>
-                    <div className="list-card">
-                        <div className="list-item">
-                            <div className="list-icon">
-                                <SFWallet size={18} />
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Ingresos */}
+                        <GlassCard className="flex flex-col gap-3 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <SFArrowUpRight size={48} className="text-green-500" />
                             </div>
-                            <div className="list-content">
-                                <p>Ingresos</p>
-                                <span>${income.toLocaleString('es-CO')} recibidos</span>
+                            <div className="flex items-center gap-2 text-green-500 mb-1">
+                                <div className="p-2 bg-green-500/10 rounded-full">
+                                    <SFArrowUpRight size={16} />
+                                </div>
+                                <span className="text-sm font-medium">Ingresos</span>
                             </div>
-                            <span className="list-time positive">+{income > 0 ? Math.round((income / Math.max(income + expenses, 1)) * 100) : 0}%</span>
-                        </div>
-                        <div className="list-item">
-                            <div className="list-icon">
-                                <SFTrendingUp size={18} />
+                            <div>
+                                <span className="text-2xl font-bold tracking-tight text-white">
+                                    ${income.toLocaleString('es-CO')}
+                                </span>
+                                <p className="text-xs text-white/50 mt-1">
+                                    +12% vs mes anterior
+                                </p>
                             </div>
-                            <div className="list-content">
-                                <p>Gastos</p>
-                                <span>${expenses.toLocaleString('es-CO')} gastados</span>
+                        </GlassCard>
+
+                        {/* Gastos */}
+                        <GlassCard className="flex flex-col gap-3 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <SFArrowDownRight size={48} className="text-red-500" />
                             </div>
-                            <span className="list-time negative">-{Math.round((expenses / Math.max(income, 1)) * 100)}%</span>
-                        </div>
+                            <div className="flex items-center gap-2 text-red-500 mb-1">
+                                <div className="p-2 bg-red-500/10 rounded-full">
+                                    <SFArrowDownRight size={16} />
+                                </div>
+                                <span className="text-sm font-medium">Gastos</span>
+                            </div>
+                            <div>
+                                <span className="text-2xl font-bold tracking-tight text-white">
+                                    ${expenses.toLocaleString('es-CO')}
+                                </span>
+                                <p className="text-xs text-white/50 mt-1">
+                                    Controlado
+                                </p>
+                            </div>
+                        </GlassCard>
+
+                        {/* Inversiones */}
+                        <GlassCard className="flex flex-col gap-3 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <SFTrendingUp size={48} className="text-blue-500" />
+                            </div>
+                            <div className="flex items-center gap-2 text-blue-500 mb-1">
+                                <div className="p-2 bg-blue-500/10 rounded-full">
+                                    <SFTrendingUp size={16} />
+                                </div>
+                                <span className="text-sm font-medium">Inversiones</span>
+                            </div>
+                            <div>
+                                <span className="text-2xl font-bold tracking-tight text-white">
+                                    ${investments.toLocaleString('es-CO')}
+                                </span>
+                                <p className="text-xs text-white/50 mt-1">
+                                    En crecimiento
+                                </p>
+                            </div>
+                        </GlassCard>
                     </div>
                 </motion.section>
 

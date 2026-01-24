@@ -96,6 +96,11 @@ html {
   -ms-text-size-adjust: 100%;
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  /* Deshabilitar rebote (overscroll) */
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
+  -webkit-overflow-scrolling: touch;
 }
 
 body {
@@ -120,6 +125,10 @@ body {
   touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
   position: relative;
+  /* Deshabilitar rebote (overscroll) */
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
 }
 
 *,
@@ -138,6 +147,10 @@ body {
   overflow-x: hidden;
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  /* Deshabilitar rebote (overscroll) */
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
 }
 
 /* iOS Liquid Glass Utilities - Sistema por capas */
@@ -523,6 +536,10 @@ button:active, a:active, [role="button"]:active {
   position: relative;
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  /* Deshabilitar rebote (overscroll) */
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
 }
 
 .app-header {
@@ -627,10 +644,13 @@ button:active, a:active, [role="button"]:active {
 .day-event-list {
   display: grid;
   gap: 12px;
+  /* Permitir que los eventos hijos manejen sus propios gestos táctiles */
+  touch-action: auto;
 }
 
 .day-event-list.horizontal {
   gap: 12px;
+  touch-action: auto;
 }
 
 .day-event-item {
@@ -840,6 +860,10 @@ button:active, a:active, [role="button"]:active {
   touch-action: pan-y;
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  /* Deshabilitar rebote (overscroll) */
+  overscroll-behavior: none;
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
 }
 
 .app-content::after {
