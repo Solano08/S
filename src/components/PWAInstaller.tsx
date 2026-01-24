@@ -5,7 +5,7 @@ import { usePWA } from '../hooks/usePWA';
 
 export function PWAInstaller() {
   // Usar usePWA normalmente - los hooks deben ser llamados incondicionalmente
-  const { updateAvailable, offlineReady, isOnline, updateApp } = usePWA();
+  const { updateAvailable, isOnline, updateApp } = usePWA();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
