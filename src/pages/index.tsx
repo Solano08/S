@@ -873,6 +873,22 @@ export const Finances = () => {
     const [selectedSubcategory, setSelectedSubcategory] = useState<{id: string, label: string, icon: string} | null>(null);
     const [balanceCalculatorOpen, setBalanceCalculatorOpen] = useState(false);
     const [balanceCalculatorValue, setBalanceCalculatorValue] = useState(1000000);
+    const [currency, setCurrency] = useState<'COP' | 'USD'>('COP');
+    const [exchangeRate, setExchangeRate] = useState(4100); // Valor por defecto
+
+    // Obtener tasa de cambio real
+    useEffect(() => {
+        if (balanceCalculatorOpen) {
+            fetch('https://api.exchangerate-api.com/v4/latest/USD')
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.rates && data.rates.COP) {
+                        setExchangeRate(data.rates.COP);
+                    }
+                })
+                .catch(err => console.error('Error fetching exchange rate:', err));
+        }
+    }, [balanceCalculatorOpen]);
 
     const handleAddTransaction = () => {
         if (!amount || !selectedCategory) return;
@@ -895,15 +911,21 @@ export const Finances = () => {
     };
 
     const handleSaveBalanceUpdate = () => {
-        // Asumimos que es un ingreso para ajustar el balance
-        // O una transacción tipo "Ajuste de balance"
+        let amountInCOP = balanceCalculatorValue;
+        
+        // Si es USD, convertir a COP para guardar en la base de datos (que maneja COP)
+        if (currency === 'USD') {
+            amountInCOP = balanceCalculatorValue * exchangeRate;
+        }
+
         addTransaction({
             title: 'Ajuste de Balance',
             category: 'Ingreso',
-            amount: balanceCalculatorValue
+            amount: amountInCOP
         });
         setBalanceCalculatorOpen(false);
         setBalanceCalculatorValue(1000000); // Reset a 1 millón
+        setCurrency('COP');
     };
 
     return (
@@ -1190,7 +1212,8 @@ export const Finances = () => {
                         style={{ 
                             justifyContent: 'flex-end',
                             alignItems: 'flex-end',
-                            padding: 0
+                            padding: 0,
+                            background: 'rgba(0,0,0,0.4)'
                         }}
                     >
                         <motion.div
@@ -1204,33 +1227,76 @@ export const Finances = () => {
                                 width: '100%', 
                                 maxWidth: '100%',
                                 borderRadius: '24px 24px 0 0',
-                                padding: '32px 24px',
+                                padding: '24px',
                                 margin: 0,
                                 background: 'var(--bg-secondary)',
-                                borderTop: '1px solid var(--glass-border)'
+                                borderTop: '1px solid var(--glass-border)',
+                                paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' // Respetar safe area
                             }}
                         >
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                {/* Header con selector de moneda y conversión */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>Actualizar Balance</h3>
-                                    <button 
-                                        onClick={() => setBalanceCalculatorOpen(false)}
-                                        style={{ background: 'transparent', border: 'none', fontSize: '24px', color: 'var(--text-secondary)' }}
-                                    >
-                                        ×
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '4px', background: 'rgba(118, 118, 128, 0.12)', padding: '3px', borderRadius: '10px' }}>
+                                        <button
+                                            onClick={() => setCurrency('USD')}
+                                            style={{
+                                                padding: '6px 16px',
+                                                borderRadius: '8px',
+                                                border: 'none',
+                                                background: currency === 'USD' ? 'var(--bg-primary)' : 'transparent',
+                                                color: currency === 'USD' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                                fontSize: '13px',
+                                                fontWeight: '600',
+                                                boxShadow: currency === 'USD' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            USD
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrency('COP')}
+                                            style={{
+                                                padding: '6px 16px',
+                                                borderRadius: '8px',
+                                                border: 'none',
+                                                background: currency === 'COP' ? 'var(--bg-primary)' : 'transparent',
+                                                color: currency === 'COP' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                                fontSize: '13px',
+                                                fontWeight: '600',
+                                                boxShadow: currency === 'COP' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            COP
+                                        </button>
+                                    </div>
+
+                                    <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                        <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                            Conversión estimada
+                                        </span>
+                                        <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                                            {currency === 'USD' 
+                                                ? `≈ $${(balanceCalculatorValue * exchangeRate).toLocaleString('es-CO')} COP`
+                                                : `≈ $${(balanceCalculatorValue / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 2 })} USD`
+                                            }
+                                        </span>
+                                    </div>
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '10px 0' }}>
                                     <button
-                                        onClick={() => setBalanceCalculatorValue(prev => Math.max(0, prev - 1000000))}
+                                        onClick={() => setBalanceCalculatorValue(prev => Math.max(0, prev - (currency === 'USD' ? 100 : 1000000)))}
                                         style={{
-                                            width: '60px',
-                                            height: '60px',
+                                            width: '56px',
+                                            height: '56px',
                                             borderRadius: '50%',
                                             border: '1px solid var(--glass-border)',
                                             background: 'var(--glass-bg-base)',
-                                            fontSize: '32px',
+                                            fontSize: '28px',
                                             color: 'var(--text-primary)',
                                             cursor: 'pointer',
                                             display: 'flex',
@@ -1242,29 +1308,36 @@ export const Finances = () => {
                                     </button>
 
                                     <div style={{ flex: 1, textAlign: 'center' }}>
-                                        <span style={{ fontSize: '36px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                                            ${(balanceCalculatorValue / 1000000).toLocaleString('es-CO')}M
+                                        <span style={{ fontSize: '42px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-1px' }}>
+                                            {currency === 'USD' ? '$' : ''}
+                                            {currency === 'USD' 
+                                                ? balanceCalculatorValue.toLocaleString('en-US')
+                                                : (balanceCalculatorValue / 1000000).toLocaleString('es-CO') + 'M'
+                                            }
                                         </span>
-                                        <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--text-tertiary)' }}>
-                                            ${balanceCalculatorValue.toLocaleString('es-CO')}
+                                        <p style={{ margin: '4px 0 0', fontSize: '15px', color: 'var(--text-tertiary)' }}>
+                                            {currency === 'USD' ? 'Dólares' : `$${balanceCalculatorValue.toLocaleString('es-CO')}`}
                                         </p>
                                     </div>
 
                                     <button
                                         onClick={() => {
-                                            if (balanceCalculatorValue === 1000000) {
-                                                setBalanceCalculatorValue(5000000);
+                                            const increment = currency === 'USD' ? 500 : 5000000;
+                                            const initial = currency === 'USD' ? 100 : 1000000;
+                                            
+                                            if (balanceCalculatorValue === initial) {
+                                                setBalanceCalculatorValue(increment);
                                             } else {
-                                                setBalanceCalculatorValue(prev => prev + 5000000);
+                                                setBalanceCalculatorValue(prev => prev + increment);
                                             }
                                         }}
                                         style={{
-                                            width: '60px',
-                                            height: '60px',
+                                            width: '56px',
+                                            height: '56px',
                                             borderRadius: '50%',
                                             border: 'none',
                                             background: 'var(--ios-blue)',
-                                            fontSize: '32px',
+                                            fontSize: '28px',
                                             color: '#fff',
                                             cursor: 'pointer',
                                             display: 'flex',
@@ -1285,11 +1358,12 @@ export const Finances = () => {
                                         borderRadius: '16px',
                                         background: 'var(--ios-green)',
                                         color: '#fff',
-                                        fontSize: '18px',
+                                        fontSize: '17px',
                                         fontWeight: '600',
                                         border: 'none',
                                         cursor: 'pointer',
-                                        boxShadow: '0 8px 24px rgba(48, 219, 91, 0.3)'
+                                        boxShadow: '0 8px 24px rgba(48, 219, 91, 0.25)',
+                                        marginBottom: '8px'
                                     }}
                                 >
                                     Guardar Ingreso
