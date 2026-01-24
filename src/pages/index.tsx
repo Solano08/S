@@ -1216,7 +1216,7 @@ export const Finances = () => {
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'flex-end',
-                            paddingBottom: 'calc(80px + env(safe-area-inset-bottom))',
+                            paddingBottom: 'calc(60px + env(safe-area-inset-bottom))',
                             background: 'rgba(0,0,0,0.4)'
                         }}
                     >
@@ -1228,17 +1228,17 @@ export const Finances = () => {
                             className="calendar-modal-card"
                             onClick={(e) => e.stopPropagation()}
                             style={{ 
-                                width: '95%', 
-                                maxWidth: '420px',
-                                borderRadius: '24px',
-                                padding: '24px',
-                                margin: '0 auto',
+                                width: '100%', 
+                                maxWidth: '100%',
+                                borderRadius: '24px 24px 0 0',
+                                padding: '20px 24px',
+                                margin: '0',
                                 background: 'var(--bg-secondary)',
-                                border: '1px solid var(--glass-border)',
-                                boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
+                                borderTop: '1px solid var(--glass-border)',
+                                boxShadow: '0 -4px 20px rgba(0,0,0,0.1)'
                             }}
                         >
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 {/* Header con selector de moneda y conversión */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ display: 'flex', gap: '4px', background: 'rgba(118, 118, 128, 0.12)', padding: '3px', borderRadius: '10px' }}>
@@ -1291,16 +1291,16 @@ export const Finances = () => {
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '10px 0' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '4px 0' }}>
                                     <button
                                         onClick={() => setBalanceCalculatorValue(prev => Math.max(0, prev - (currency === 'USD' ? 10 : 100000)))}
                                         style={{
-                                            width: '56px',
-                                            height: '56px',
+                                            width: '50px',
+                                            height: '50px',
                                             borderRadius: '50%',
                                             border: '1px solid var(--glass-border)',
                                             background: 'var(--glass-bg-base)',
-                                            fontSize: '28px',
+                                            fontSize: '24px',
                                             color: 'var(--text-primary)',
                                             cursor: 'pointer',
                                             display: 'flex',
@@ -1312,14 +1312,14 @@ export const Finances = () => {
                                     </button>
 
                                     <div style={{ flex: 1, textAlign: 'center' }}>
-                                        <span style={{ fontSize: '42px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-1px' }}>
+                                        <span style={{ fontSize: '36px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-1px' }}>
                                             {currency === 'USD' ? '$' : ''}
                                             {currency === 'USD' 
                                                 ? balanceCalculatorValue.toLocaleString('en-US')
                                                 : (balanceCalculatorValue / 1000000).toLocaleString('es-CO') + 'M'
                                             }
                                         </span>
-                                        <p style={{ margin: '4px 0 0', fontSize: '15px', color: 'var(--text-tertiary)' }}>
+                                        <p style={{ margin: '2px 0 0', fontSize: '14px', color: 'var(--text-tertiary)' }}>
                                             {currency === 'USD' ? 'Dólares' : `$${balanceCalculatorValue.toLocaleString('es-CO')}`}
                                         </p>
                                     </div>
@@ -1330,12 +1330,12 @@ export const Finances = () => {
                                             setBalanceCalculatorValue(prev => prev + increment);
                                         }}
                                         style={{
-                                            width: '56px',
-                                            height: '56px',
+                                            width: '50px',
+                                            height: '50px',
                                             borderRadius: '50%',
                                             border: 'none',
                                             background: 'var(--ios-blue)',
-                                            fontSize: '28px',
+                                            fontSize: '24px',
                                             color: '#fff',
                                             cursor: 'pointer',
                                             display: 'flex',
@@ -1352,16 +1352,16 @@ export const Finances = () => {
                                     onClick={handleSaveBalanceUpdate}
                                     style={{
                                         width: '100%',
-                                        padding: '18px',
-                                        borderRadius: '16px',
+                                        padding: '14px',
+                                        borderRadius: '14px',
                                         background: 'var(--ios-green)',
                                         color: '#fff',
-                                        fontSize: '17px',
+                                        fontSize: '16px',
                                         fontWeight: '600',
                                         border: 'none',
                                         cursor: 'pointer',
-                                        boxShadow: '0 8px 24px rgba(48, 219, 91, 0.25)',
-                                        marginBottom: '8px'
+                                        boxShadow: '0 4px 12px rgba(48, 219, 91, 0.25)',
+                                        marginBottom: '0'
                                     }}
                                 >
                                     Guardar Ingreso
