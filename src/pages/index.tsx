@@ -872,7 +872,7 @@ export const Finances = () => {
     const [selectedCategory, setSelectedCategory] = useState<typeof INVESTMENT_CATEGORIES[0] | null>(null);
     const [selectedSubcategory, setSelectedSubcategory] = useState<{id: string, label: string, icon: string} | null>(null);
     const [balanceCalculatorOpen, setBalanceCalculatorOpen] = useState(false);
-    const [balanceCalculatorValue, setBalanceCalculatorValue] = useState(1000000);
+    const [balanceCalculatorValue, setBalanceCalculatorValue] = useState(0);
     const [currency, setCurrency] = useState<'COP' | 'USD'>('COP');
     const [exchangeRate, setExchangeRate] = useState(4100); // Valor por defecto
 
@@ -924,7 +924,7 @@ export const Finances = () => {
             amount: amountInCOP
         });
         setBalanceCalculatorOpen(false);
-        setBalanceCalculatorValue(1000000); // Reset a 1 millón
+        setBalanceCalculatorValue(0); // Reset a 0
         setCurrency('COP');
     };
 
@@ -1289,7 +1289,7 @@ export const Finances = () => {
 
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '10px 0' }}>
                                     <button
-                                        onClick={() => setBalanceCalculatorValue(prev => Math.max(0, prev - (currency === 'USD' ? 100 : 1000000)))}
+                                        onClick={() => setBalanceCalculatorValue(prev => Math.max(0, prev - (currency === 'USD' ? 10 : 100000)))}
                                         style={{
                                             width: '56px',
                                             height: '56px',
@@ -1322,14 +1322,8 @@ export const Finances = () => {
 
                                     <button
                                         onClick={() => {
-                                            const increment = currency === 'USD' ? 500 : 5000000;
-                                            const initial = currency === 'USD' ? 100 : 1000000;
-                                            
-                                            if (balanceCalculatorValue === initial) {
-                                                setBalanceCalculatorValue(increment);
-                                            } else {
-                                                setBalanceCalculatorValue(prev => prev + increment);
-                                            }
+                                            const increment = currency === 'USD' ? 100 : 1000000;
+                                            setBalanceCalculatorValue(prev => prev + increment);
                                         }}
                                         style={{
                                             width: '56px',
