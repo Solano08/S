@@ -849,6 +849,8 @@ export const Finances = () => {
     const [amount, setAmount] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<typeof INVESTMENT_CATEGORIES[0] | null>(null);
     const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+    const [balanceCalculatorOpen, setBalanceCalculatorOpen] = useState(false);
+    const [balanceCalculatorValue, setBalanceCalculatorValue] = useState(1000000);
 
     const handleAddTransaction = () => {
         if (!amount || !selectedCategory) return;
@@ -870,6 +872,18 @@ export const Finances = () => {
         setShowAddModal(false);
     };
 
+    const handleSaveBalanceUpdate = () => {
+        // Asumimos que es un ingreso para ajustar el balance
+        // O una transacción tipo "Ajuste de balance"
+        addTransaction({
+            title: 'Ajuste de Balance',
+            category: 'Ingreso',
+            amount: balanceCalculatorValue
+        });
+        setBalanceCalculatorOpen(false);
+        setBalanceCalculatorValue(1000000); // Reset a 1 millón
+    };
+
     return (
         <div className="app-screen">
             <header className="app-header">
@@ -883,10 +897,16 @@ export const Finances = () => {
             <div className="app-content">
                 {/* Balance actual - Mejorado */}
                 <section className="app-section">
-                    <div className="hero-card" style={{ 
-                        background: 'var(--glass-bg-base)',
-                        border: '1px solid var(--glass-border)'
-                    }}>
+                    <div 
+                        className="hero-card" 
+                        onClick={() => setBalanceCalculatorOpen(true)}
+                        style={{ 
+                            background: 'var(--glass-bg-base)',
+                            border: '1px solid var(--glass-border)',
+                            cursor: 'pointer',
+                            transition: 'transform 0.2s',
+                        }}
+                    >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div style={{ flex: 1 }}>
                                 <p style={{ 
@@ -1169,6 +1189,125 @@ export const Finances = () => {
                     </div>
                 </section>
             </div>
+
+            {/* Calculadora de Balance (Bottom Sheet) */}
+            <AnimatePresence>
+                {balanceCalculatorOpen && (
+                    <div 
+                        className="calendar-backdrop" 
+                        onClick={() => setBalanceCalculatorOpen(false)}
+                        style={{ 
+                            justifyContent: 'flex-end',
+                            alignItems: 'flex-end',
+                            padding: 0
+                        }}
+                    >
+                        <motion.div
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="calendar-modal-card"
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ 
+                                width: '100%', 
+                                maxWidth: '100%',
+                                borderRadius: '24px 24px 0 0',
+                                padding: '32px 24px',
+                                margin: 0,
+                                background: 'var(--bg-secondary)',
+                                borderTop: '1px solid var(--glass-border)'
+                            }}
+                        >
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>Actualizar Balance</h3>
+                                    <button 
+                                        onClick={() => setBalanceCalculatorOpen(false)}
+                                        style={{ background: 'transparent', border: 'none', fontSize: '24px', color: 'var(--text-secondary)' }}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                                    <button
+                                        onClick={() => setBalanceCalculatorValue(prev => Math.max(0, prev - 1000000))}
+                                        style={{
+                                            width: '60px',
+                                            height: '60px',
+                                            borderRadius: '50%',
+                                            border: '1px solid var(--glass-border)',
+                                            background: 'var(--glass-bg-base)',
+                                            fontSize: '32px',
+                                            color: 'var(--text-primary)',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}
+                                    >
+                                        -
+                                    </button>
+
+                                    <div style={{ flex: 1, textAlign: 'center' }}>
+                                        <span style={{ fontSize: '36px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                                            ${(balanceCalculatorValue / 1000000).toLocaleString('es-CO')}M
+                                        </span>
+                                        <p style={{ margin: '4px 0 0', fontSize: '14px', color: 'var(--text-tertiary)' }}>
+                                            ${balanceCalculatorValue.toLocaleString('es-CO')}
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        onClick={() => {
+                                            if (balanceCalculatorValue === 1000000) {
+                                                setBalanceCalculatorValue(5000000);
+                                            } else {
+                                                setBalanceCalculatorValue(prev => prev + 5000000);
+                                            }
+                                        }}
+                                        style={{
+                                            width: '60px',
+                                            height: '60px',
+                                            borderRadius: '50%',
+                                            border: 'none',
+                                            background: 'var(--ios-blue)',
+                                            fontSize: '32px',
+                                            color: '#fff',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            boxShadow: '0 4px 12px rgba(41, 151, 255, 0.3)'
+                                        }}
+                                    >
+                                        +
+                                    </button>
+                                </div>
+
+                                <button
+                                    onClick={handleSaveBalanceUpdate}
+                                    style={{
+                                        width: '100%',
+                                        padding: '18px',
+                                        borderRadius: '16px',
+                                        background: 'var(--ios-green)',
+                                        color: '#fff',
+                                        fontSize: '18px',
+                                        fontWeight: '600',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        boxShadow: '0 8px 24px rgba(48, 219, 91, 0.3)'
+                                    }}
+                                >
+                                    Guardar Ingreso
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
 
             {/* Modal para agregar movimiento */}
             {showAddModal && (
