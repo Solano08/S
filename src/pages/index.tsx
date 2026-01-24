@@ -1212,30 +1212,30 @@ export const Finances = () => {
                         style={{ 
                             position: 'fixed',
                             inset: 0,
-                            zIndex: 100,
+                            zIndex: 200,
                             display: 'flex',
-                            justifyContent: 'flex-end',
+                            justifyContent: 'center',
                             alignItems: 'flex-end',
-                            padding: 0,
+                            paddingBottom: 'calc(80px + env(safe-area-inset-bottom))',
                             background: 'rgba(0,0,0,0.4)'
                         }}
                     >
                         <motion.div
-                            initial={{ y: '100%' }}
-                            animate={{ y: 0 }}
-                            exit={{ y: '100%' }}
+                            initial={{ y: '100%', opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: '100%', opacity: 0 }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
                             className="calendar-modal-card"
                             onClick={(e) => e.stopPropagation()}
                             style={{ 
-                                width: '100%', 
-                                maxWidth: '100%',
-                                borderRadius: '24px 24px 0 0',
+                                width: '95%', 
+                                maxWidth: '420px',
+                                borderRadius: '24px',
                                 padding: '24px',
-                                margin: 0,
+                                margin: '0 auto',
                                 background: 'var(--bg-secondary)',
-                                borderTop: '1px solid var(--glass-border)',
-                                paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' // Respetar safe area
+                                border: '1px solid var(--glass-border)',
+                                boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
                             }}
                         >
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
