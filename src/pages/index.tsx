@@ -815,20 +815,30 @@ export const Projects = () => {
         </div>
     );
 };
+const INVESTMENT_CATEGORIES = [
+    { id: 'home', label: 'Casa', icon: '🏠' },
+    { id: 'clothing', label: 'Ropa', icon: '👕' },
+    { id: 'crypto', label: 'Cripto', icon: '₿', subcategories: ['BTC', 'ETH', 'SOL', 'USDT', 'BNB'] },
+    { id: 'cars', label: 'Carros', icon: '🚗' },
+    { id: 'food', label: 'Comida', icon: '🍔' },
+    { id: 'shopping', label: 'Compras', icon: '🛍️' },
+    { id: 'entertainment', label: 'Entretenimiento', icon: '🎬', subcategories: ['Spotify', 'Netflix', 'Disney+', 'Prime Video', 'Apple TV'] },
+];
+
 export const Finances = () => {
     const { balance, income, expenses, transactions, addTransaction } = useAppData();
     
     // Calcular inversiones
     const investmentsTotal = useMemo(() => {
         return (transactions || [])
-            .filter(t => ['Cripto', 'Inversión', 'Inversiones', 'Acciones'].includes(t.category))
+            .filter(t => ['Cripto', 'Inversión', 'Inversiones', 'Acciones', 'Casa', 'Ropa', 'Carros', 'Comida', 'Compras', 'Entretenimiento'].includes(t.category))
             .reduce((acc, t) => acc + Math.abs(t.amount), 0);
     }, [transactions]);
 
     // Filtrar transacciones de inversión
     const investmentTransactions = useMemo(() => {
         return (transactions || []).filter(t => 
-            ['Cripto', 'Inversión', 'Inversiones', 'Acciones'].includes(t.category)
+            ['Cripto', 'Inversión', 'Inversiones', 'Acciones', 'Casa', 'Ropa', 'Carros', 'Comida', 'Compras', 'Entretenimiento'].includes(t.category)
         );
     }, [transactions]);
 
@@ -837,26 +847,25 @@ export const Finances = () => {
     const [showInvestmentsModal, setShowInvestmentsModal] = useState(false);
     const [step, setStep] = useState(1);
     const [amount, setAmount] = useState("");
-    const [title, setTitle] = useState("");
-    const [category, setCategory] = useState("");
-    const [transactionType, setTransactionType] = useState<'income' | 'expense'>('expense');
+    const [selectedCategory, setSelectedCategory] = useState<typeof INVESTMENT_CATEGORIES[0] | null>(null);
+    const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
 
     const handleAddTransaction = () => {
-        if (!amount || !title) return;
+        if (!amount || !selectedCategory) return;
         
         const numAmount = parseFloat(amount);
         if (isNaN(numAmount) || numAmount <= 0) return;
 
         addTransaction({
-            title,
-            category: category || 'General',
-            amount: transactionType === 'income' ? numAmount : -numAmount
+            title: selectedSubcategory || selectedCategory.label,
+            category: selectedCategory.label,
+            amount: -numAmount // Siempre negativo como gasto/inversión (salida de dinero)
         });
 
         // Reset form
         setAmount("");
-        setTitle("");
-        setCategory("");
+        setSelectedCategory(null);
+        setSelectedSubcategory(null);
         setStep(1);
         setShowAddModal(false);
     };
@@ -1121,8 +1130,8 @@ export const Finances = () => {
                     setShowAddModal(false);
                     setStep(1);
                     setAmount("");
-                    setTitle("");
-                    setCategory("");
+                    setSelectedCategory(null);
+                    setSelectedSubcategory(null);
                 }}>
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
@@ -1139,7 +1148,7 @@ export const Finances = () => {
                             marginBottom: '20px'
                         }}>
                             <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>
-                                {step === 1 ? 'Cantidad' : step === 2 ? 'Nombre' : 'Detalles'}
+                                {step === 1 ? 'Tipo de inversión' : step === 2 ? 'Detalle' : 'Monto'}
                             </h2>
                             <button
                                 className="icon-button"
@@ -1147,8 +1156,8 @@ export const Finances = () => {
                                     setShowAddModal(false);
                                     setStep(1);
                                     setAmount("");
-                                    setTitle("");
-                                    setCategory("");
+                                    setSelectedCategory(null);
+                                    setSelectedSubcategory(null);
                                 }}
                                 aria-label="Cerrar"
                             >
@@ -1156,64 +1165,97 @@ export const Finances = () => {
                             </button>
                         </div>
 
-                        {/* Paso 1: Tipo y Cantidad */}
+                        {/* Paso 1: Selección de Categoría */}
                         {step === 1 && (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                                {INVESTMENT_CATEGORIES.map((cat) => (
+                                    <button
+                                        key={cat.id}
+                                        onClick={() => {
+                                            setSelectedCategory(cat);
+                                            if (cat.subcategories) {
+                                                setStep(2);
+                                            } else {
+                                                setStep(3);
+                                            }
+                                        }}
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            padding: '16px',
+                                            borderRadius: '16px',
+                                            border: '1px solid var(--glass-border)',
+                                            background: 'rgba(255, 255, 255, 0.03)',
+                                            color: 'var(--text-primary)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        <span style={{ fontSize: '24px' }}>{cat.icon}</span>
+                                        <span style={{ fontSize: '12px', fontWeight: '500' }}>{cat.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Paso 2: Selección de Subcategoría (si aplica) */}
+                        {step === 2 && selectedCategory && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                <div>
-                                    <label style={{ 
-                                        fontSize: '12px', 
-                                        fontWeight: '600', 
-                                        color: 'var(--text-tertiary)',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px',
-                                        marginBottom: '8px',
-                                        display: 'block'
-                                    }}>
-                                        Tipo
-                                    </label>
-                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                                    {selectedCategory.subcategories?.map((sub) => (
                                         <button
-                                            type="button"
-                                            onClick={() => setTransactionType('income')}
+                                            key={sub}
+                                            onClick={() => {
+                                                setSelectedSubcategory(sub);
+                                                setStep(3);
+                                            }}
                                             style={{
-                                                flex: 1,
-                                                padding: '12px',
+                                                padding: '16px',
                                                 borderRadius: '12px',
-                                                border: 'none',
-                                                background: transactionType === 'income' 
-                                                    ? 'var(--ios-green)' 
-                                                    : 'rgba(255, 255, 255, 0.06)',
-                                                color: transactionType === 'income' ? '#fff' : 'var(--text-primary)',
+                                                border: '1px solid var(--glass-border)',
+                                                background: 'rgba(255, 255, 255, 0.03)',
+                                                color: 'var(--text-primary)',
                                                 fontSize: '14px',
                                                 fontWeight: '600',
                                                 cursor: 'pointer',
                                                 transition: 'all 0.2s'
                                             }}
                                         >
-                                            Ingreso
+                                            {sub}
                                         </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setTransactionType('expense')}
-                                            style={{
-                                                flex: 1,
-                                                padding: '12px',
-                                                borderRadius: '12px',
-                                                border: 'none',
-                                                background: transactionType === 'expense' 
-                                                    ? 'var(--ios-red)' 
-                                                    : 'rgba(255, 255, 255, 0.06)',
-                                                color: transactionType === 'expense' ? '#fff' : 'var(--text-primary)',
-                                                fontSize: '14px',
-                                                fontWeight: '600',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s'
-                                            }}
-                                        >
-                                            Gasto
-                                        </button>
-                                    </div>
+                                    ))}
                                 </div>
+                                <button
+                                    onClick={() => {
+                                        setStep(1);
+                                        setSelectedCategory(null);
+                                    }}
+                                    style={{
+                                        padding: '12px',
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'var(--text-secondary)',
+                                        fontSize: '14px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Atrás
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Paso 3: Monto */}
+                        {step === 3 && selectedCategory && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                <div style={{ textAlign: 'center' }}>
+                                    <span style={{ fontSize: '40px' }}>{selectedCategory.icon}</span>
+                                    <p style={{ margin: '8px 0 0', fontSize: '16px', fontWeight: '600' }}>
+                                        {selectedSubcategory || selectedCategory.label}
+                                    </p>
+                                </div>
+
                                 <div>
                                     <label style={{ 
                                         fontSize: '12px', 
@@ -1224,7 +1266,7 @@ export const Finances = () => {
                                         marginBottom: '8px',
                                         display: 'block'
                                     }}>
-                                        Cantidad
+                                        Monto a registrar
                                     </label>
                                     <input
                                         type="number"
@@ -1234,156 +1276,15 @@ export const Finances = () => {
                                         autoFocus
                                         style={{
                                             width: '100%',
-                                            padding: '14px',
-                                            fontSize: '24px',
-                                            fontWeight: '600',
+                                            padding: '16px',
+                                            fontSize: '32px',
+                                            fontWeight: '700',
                                             background: 'rgba(255, 255, 255, 0.06)',
                                             border: '1px solid var(--glass-border)',
-                                            borderRadius: '12px',
+                                            borderRadius: '16px',
                                             color: 'var(--text-primary)',
                                             outline: 'none',
                                             textAlign: 'center'
-                                        }}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && amount) {
-                                                setStep(2);
-                                            }
-                                        }}
-                                    />
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => amount && setStep(2)}
-                                    disabled={!amount || parseFloat(amount) <= 0}
-                                    style={{
-                                        width: '100%',
-                                        padding: '14px',
-                                        borderRadius: '12px',
-                                        border: 'none',
-                                        background: amount && parseFloat(amount) > 0 
-                                            ? 'var(--ios-blue)' 
-                                            : 'rgba(255, 255, 255, 0.06)',
-                                        color: amount && parseFloat(amount) > 0 ? '#fff' : 'var(--text-secondary)',
-                                        fontSize: '16px',
-                                        fontWeight: '600',
-                                        cursor: amount && parseFloat(amount) > 0 ? 'pointer' : 'not-allowed',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    Continuar
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Paso 2: Nombre */}
-                        {step === 2 && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                <div>
-                                    <label style={{ 
-                                        fontSize: '12px', 
-                                        fontWeight: '600', 
-                                        color: 'var(--text-tertiary)',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px',
-                                        marginBottom: '8px',
-                                        display: 'block'
-                                    }}>
-                                        Nombre del producto
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={title}
-                                        onChange={(e) => setTitle(e.target.value)}
-                                        placeholder="Ej: Comida, Transporte, Salario..."
-                                        autoFocus
-                                        style={{
-                                            width: '100%',
-                                            padding: '14px',
-                                            fontSize: '16px',
-                                            background: 'rgba(255, 255, 255, 0.06)',
-                                            border: '1px solid var(--glass-border)',
-                                            borderRadius: '12px',
-                                            color: 'var(--text-primary)',
-                                            outline: 'none'
-                                        }}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && title.trim()) {
-                                                setStep(3);
-                                            }
-                                        }}
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setStep(1)}
-                                        style={{
-                                            flex: 1,
-                                            padding: '14px',
-                                            borderRadius: '12px',
-                                            border: '1px solid var(--glass-border)',
-                                            background: 'transparent',
-                                            color: 'var(--text-primary)',
-                                            fontSize: '16px',
-                                            fontWeight: '600',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        Atrás
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => title.trim() && setStep(3)}
-                                        disabled={!title.trim()}
-                                        style={{
-                                            flex: 1,
-                                            padding: '14px',
-                                            borderRadius: '12px',
-                                            border: 'none',
-                                            background: title.trim() ? 'var(--ios-blue)' : 'rgba(255, 255, 255, 0.06)',
-                                            color: title.trim() ? '#fff' : 'var(--text-secondary)',
-                                            fontSize: '16px',
-                                            fontWeight: '600',
-                                            cursor: title.trim() ? 'pointer' : 'not-allowed',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        Continuar
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Paso 3: Detalles opcionales */}
-                        {step === 3 && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                <div>
-                                    <label style={{ 
-                                        fontSize: '12px', 
-                                        fontWeight: '600', 
-                                        color: 'var(--text-tertiary)',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px',
-                                        marginBottom: '8px',
-                                        display: 'block'
-                                    }}>
-                                        Categoría (opcional)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={category}
-                                        onChange={(e) => setCategory(e.target.value)}
-                                        placeholder="Ej: Alimentación, Transporte..."
-                                        autoFocus
-                                        style={{
-                                            width: '100%',
-                                            padding: '14px',
-                                            fontSize: '16px',
-                                            background: 'rgba(255, 255, 255, 0.06)',
-                                            border: '1px solid var(--glass-border)',
-                                            borderRadius: '12px',
-                                            color: 'var(--text-primary)',
-                                            outline: 'none'
                                         }}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
@@ -1392,10 +1293,19 @@ export const Finances = () => {
                                         }}
                                     />
                                 </div>
-                                <div style={{ display: 'flex', gap: '8px' }}>
+
+                                <div style={{ display: 'flex', gap: '12px' }}>
                                     <button
                                         type="button"
-                                        onClick={() => setStep(2)}
+                                        onClick={() => {
+                                            if (selectedCategory.subcategories) {
+                                                setStep(2);
+                                                setSelectedSubcategory(null);
+                                            } else {
+                                                setStep(1);
+                                                setSelectedCategory(null);
+                                            }
+                                        }}
                                         style={{
                                             flex: 1,
                                             padding: '14px',
@@ -1413,17 +1323,19 @@ export const Finances = () => {
                                     <button
                                         type="button"
                                         onClick={handleAddTransaction}
+                                        disabled={!amount || parseFloat(amount) <= 0}
                                         style={{
                                             flex: 1,
                                             padding: '14px',
                                             borderRadius: '12px',
                                             border: 'none',
-                                            background: 'var(--ios-green)',
-                                            color: '#fff',
+                                            background: amount && parseFloat(amount) > 0 ? 'var(--ios-blue)' : 'rgba(255, 255, 255, 0.1)',
+                                            color: amount && parseFloat(amount) > 0 ? '#fff' : 'var(--text-tertiary)',
                                             fontSize: '16px',
                                             fontWeight: '600',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s'
+                                            cursor: amount && parseFloat(amount) > 0 ? 'pointer' : 'not-allowed',
+                                            transition: 'all 0.2s',
+                                            boxShadow: amount && parseFloat(amount) > 0 ? '0 4px 12px rgba(41, 151, 255, 0.3)' : 'none'
                                         }}
                                     >
                                         Guardar
