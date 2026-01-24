@@ -36,6 +36,14 @@ export function SFPlus(props: IconProps) {
     );
 }
 
+export function SFMinus(props: IconProps) {
+    return (
+        <IconBase {...props}>
+            <path d="M5 12h14" />
+        </IconBase>
+    );
+}
+
 export function SFArrowUpRight(props: IconProps) {
     return (
         <IconBase {...props}>

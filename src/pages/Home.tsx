@@ -12,7 +12,9 @@ import {
     SFTarget,
     SFTrendingUp,
     SFArrowUpRight,
-    SFArrowDownRight
+    SFArrowDownRight,
+    SFPlus,
+    SFMinus
 } from '../components/ui/SFIcons';
 
 export function Home() {
@@ -214,19 +216,50 @@ export function Home() {
                                         className="pt-4 flex flex-col gap-3 border-t border-gray-200 dark:border-gray-700 mt-2"
                                     >
                                         <h4 className="text-sm font-semibold text-black dark:text-white">Agregar Ingreso</h4>
-                                        <input
-                                            type="number"
-                                            placeholder="Monto"
-                                            value={newIncomeAmount}
-                                            onChange={(e) => setNewIncomeAmount(e.target.value)}
-                                            className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-800 border-none text-sm focus:ring-2 focus:ring-green-500 outline-none"
-                                            autoFocus
-                                        />
+                                        
+                                        {/* Calculadora de Ingreso */}
+                                        <div className="flex items-center gap-3 bg-gray-100 dark:bg-gray-800 p-2 rounded-2xl">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const current = parseFloat(newIncomeAmount) || 0;
+                                                    const next = Math.max(0, current - 1000000);
+                                                    setNewIncomeAmount(next.toString());
+                                                }}
+                                                className="w-12 h-12 flex items-center justify-center bg-white dark:bg-gray-700 rounded-xl shadow-sm text-gray-500 active:scale-95 transition-transform"
+                                            >
+                                                <SFMinus size={24} />
+                                            </button>
+
+                                            <input
+                                                type="number"
+                                                placeholder="0"
+                                                value={newIncomeAmount}
+                                                onChange={(e) => setNewIncomeAmount(e.target.value)}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="flex-1 text-center bg-transparent text-3xl font-bold border-none outline-none text-black dark:text-white placeholder-gray-400"
+                                                autoFocus
+                                            />
+
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const current = parseFloat(newIncomeAmount) || 0;
+                                                    const next = current + 1000000;
+                                                    setNewIncomeAmount(next.toString());
+                                                }}
+                                                className="w-12 h-12 flex items-center justify-center bg-green-500 text-white rounded-xl shadow-lg shadow-green-500/30 active:scale-95 transition-transform"
+                                            >
+                                                <SFPlus size={24} />
+                                            </button>
+                                        </div>
+
                                         <input
                                             type="text"
                                             placeholder="Descripción (opcional)"
                                             value={newIncomeDesc}
                                             onChange={(e) => setNewIncomeDesc(e.target.value)}
+                                            onClick={(e) => e.stopPropagation()}
                                             className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-800 border-none text-sm focus:ring-2 focus:ring-green-500 outline-none"
                                         />
                                         <div className="flex gap-2 mt-2">
