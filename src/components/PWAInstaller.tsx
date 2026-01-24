@@ -192,30 +192,6 @@ export function PWAInstaller() {
         </div>
       )}
 
-      {/* Indicador de lista para offline */}
-      {offlineReady && isOnline && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 'env(safe-area-inset-top)',
-            left: '16px',
-            right: '16px',
-            zIndex: 1000,
-            background: 'rgba(48, 219, 91, 0.9)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            borderRadius: '12px',
-            padding: '8px 12px',
-            fontSize: '11px',
-            fontWeight: 600,
-            color: '#fff',
-            textAlign: 'center',
-            animation: 'fadeOut 3s ease-out forwards',
-          }}
-        >
-          ✅ Aplicación lista para funcionar offline
-        </div>
-      )}
     </>
   );
 }

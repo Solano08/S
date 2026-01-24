@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { QuickActionsMenu } from '../components/ui/QuickActionsMenu';
