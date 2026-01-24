@@ -919,7 +919,7 @@ export const Finances = () => {
         }
 
         addTransaction({
-            title: 'Ajuste de Balance',
+            title: 'Ingreso registrado',
             category: 'Ingreso',
             amount: amountInCOP
         });
