@@ -1210,6 +1210,10 @@ export const Finances = () => {
                         className="calendar-backdrop" 
                         onClick={() => setBalanceCalculatorOpen(false)}
                         style={{ 
+                            position: 'fixed',
+                            inset: 0,
+                            zIndex: 100,
+                            display: 'flex',
                             justifyContent: 'flex-end',
                             alignItems: 'flex-end',
                             padding: 0,
