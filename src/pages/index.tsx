@@ -1859,7 +1859,7 @@ export const Calendar = () => {
     const [editingTaskInModal, setEditingTaskInModal] = useState<string | null>(null);
     const [showTaskForm, setShowTaskForm] = useState(false);
     const [completedModalOpen, setCompletedModalOpen] = useState(false);
-    const [completedModalFilter, setCompletedModalFilter] = useState<'today' | 'tomorrow' | 'all' | 'tasks' | null>(null);
+    const [completedModalFilter, setCompletedModalFilter] = useState<'today' | 'tomorrow' | 'all' | 'tasks' | 'events' | null>(null);
     const [progressModalOpen, setProgressModalOpen] = useState(false);
     const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ type: 'task' | 'event'; id: string } | null>(null);
     const [taskTitle, setTaskTitle] = useState("");
@@ -3448,6 +3448,7 @@ export const Calendar = () => {
                                     }}
                                     onClick={() => {
                                         setProgressModalOpen(true);
+                                        setCompletedModalFilter('events'); // Resetear filtro a eventos por defecto
                                     }}
                                     onMouseEnter={(e) => {
                                         e.currentTarget.style.opacity = '0.8';
@@ -3537,7 +3538,42 @@ export const Calendar = () => {
                         {eventsCount > 0 ? (
                             <div className="day-event-list horizontal">
                                 {allUpcomingEvents.filter(event => event && event.id).map((event) => (
-                                    <SwipeEventItem key={event.id} event={event} />
+                                    <div 
+                                        key={event.id}
+                                        className="day-event-item horizontal"
+                                        style={{ 
+                                            cursor: 'default',
+                                            userSelect: 'none',
+                                            WebkitUserSelect: 'none'
+                                        }}
+                                    >
+                                        <div className="day-event-badge">
+                                            {event?.event_date ? (() => {
+                                                const eventDate = parseDateFromString(event.event_date);
+                                                return eventDate.getDate();
+                                            })() : ((today && today instanceof Date && !isNaN(today.getTime())) ? today.getDate() : new Date().getDate())}
+                                        </div>
+                                        <div className="day-event-info">
+                                            <span className="day-event-title">{event?.title || 'Sin título'}</span>
+                                            <span className="day-event-meta">
+                                                {event?.event_date ? (() => {
+                                                    const eventDate = parseDateFromString(event.event_date);
+                                                    const isToday = formatDateLocal(eventDate) === todayDateString;
+                                                    if (isToday) {
+                                                        return event?.meta || 'Sin descripción';
+                                                    } else {
+                                                        const dateLabel = eventDate.toLocaleDateString("es-ES", {
+                                                            day: "numeric",
+                                                            month: "short"
+                                                        });
+                                                        const meta = event?.meta ? ` · ${event.meta}` : '';
+                                                        return `${dateLabel}${meta}`;
+                                                    }
+                                                })() : (event?.meta || 'Sin descripción')}
+                                            </span>
+                                            <span className="day-event-time-range">{event?.time || 'Sin hora'}</span>
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
                         ) : (
@@ -4147,14 +4183,19 @@ export const Calendar = () => {
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.5px'
                                     }}>
-                                        Eventos realizados ({allCompletedEvents.length})
+                                        {completedModalFilter === 'tasks' 
+                                            ? `Tareas realizadas (${completedTasks.length})` 
+                                            : `Eventos realizados (${allCompletedEvents.length})`}
                                     </h4>
                                     
                                     {/* Estadística de tareas por día - Esquina superior derecha */}
                                     <div 
                                         onClick={() => {
-                                            setCompletedModalOpen(true);
-                                            setCompletedModalFilter('tasks');
+                                            if (completedModalFilter === 'tasks') {
+                                                setCompletedModalFilter('events');
+                                            } else {
+                                                setCompletedModalFilter('tasks');
+                                            }
                                         }}
                                         style={{
                                             background: 'var(--glass-bg-strong)',
@@ -4182,7 +4223,7 @@ export const Calendar = () => {
                                             letterSpacing: '0.2px',
                                             lineHeight: '1'
                                         }}>
-                                            Promedio
+                                            {completedModalFilter === 'tasks' ? 'Eventos' : 'Promedio'}
                                         </p>
                                         <p style={{
                                             fontSize: '11px',
@@ -4191,68 +4232,86 @@ export const Calendar = () => {
                                             margin: 0,
                                             lineHeight: '1.2'
                                         }}>
-                                            {tasksPerDayAverage} tareas/día
+                                            {completedModalFilter === 'tasks' ? 'Ver eventos' : `${tasksPerDayAverage} tareas/día`}
                                         </p>
                                     </div>
                                 </div>
-                                {allCompletedEvents.length > 0 ? (
-                                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                        {allCompletedEvents.map((event) => {
-                                            let formattedDate = '';
-                                            try {
-                                                const eventDate = parseDateFromString(event.event_date);
-                                                if (!isNaN(eventDate.getTime())) {
-                                                    formattedDate = eventDate.toLocaleDateString('es-ES', {
-                                                        day: 'numeric',
-                                                        month: 'long'
-                                                    });
-                                                } else {
+                                {completedModalFilter === 'tasks' ? (
+                                    // Vista de Tareas Completadas
+                                    completedTasks.length > 0 ? (
+                                        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                            {completedTasks.map((task) => (
+                                                <SwipeCompletedTaskItem key={task.id} task={task} />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                                            <p style={{ color: 'var(--text-tertiary)', fontSize: '14px', margin: 0 }}>
+                                                No hay tareas completadas
+                                            </p>
+                                        </div>
+                                    )
+                                ) : (
+                                    // Vista de Eventos Completados (Default)
+                                    allCompletedEvents.length > 0 ? (
+                                        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                            {allCompletedEvents.map((event) => {
+                                                let formattedDate = '';
+                                                try {
+                                                    const eventDate = parseDateFromString(event.event_date);
+                                                    if (!isNaN(eventDate.getTime())) {
+                                                        formattedDate = eventDate.toLocaleDateString('es-ES', {
+                                                            day: 'numeric',
+                                                            month: 'long'
+                                                        });
+                                                    } else {
+                                                        formattedDate = event.event_date;
+                                                    }
+                                                } catch (error) {
                                                     formattedDate = event.event_date;
                                                 }
-                                            } catch (error) {
-                                                formattedDate = event.event_date;
-                                            }
-                                            
-                                            return (
-                                                <div
-                                                    key={event.id}
-                                                    className="list-item"
-                                                    style={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        gap: '8px',
-                                                        padding: '12px',
-                                                        borderBottom: '1px solid var(--glass-border)'
-                                                    }}
-                                                >
-                                                    <div style={{
-                                                        fontSize: '12px',
-                                                        fontWeight: '600',
-                                                        color: 'var(--text-secondary)',
-                                                        textTransform: 'capitalize'
-                                                    }}>
-                                                        {formattedDate}
-                                                    </div>
-                                                    <div style={{ flex: 1 }}>
-                                                        <p style={{
-                                                            margin: 0,
-                                                            fontSize: '15px',
-                                                            fontWeight: '500',
-                                                            color: 'var(--text-primary)'
+                                                
+                                                return (
+                                                    <div
+                                                        key={event.id}
+                                                        className="list-item"
+                                                        style={{
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            gap: '8px',
+                                                            padding: '12px',
+                                                            borderBottom: '1px solid var(--glass-border)'
+                                                        }}
+                                                    >
+                                                        <div style={{
+                                                            fontSize: '12px',
+                                                            fontWeight: '600',
+                                                            color: 'var(--text-secondary)',
+                                                            textTransform: 'capitalize'
                                                         }}>
-                                                            {event.title}
-                                                        </p>
+                                                            {formattedDate}
+                                                        </div>
+                                                        <div style={{ flex: 1 }}>
+                                                            <p style={{
+                                                                margin: 0,
+                                                                fontSize: '15px',
+                                                                fontWeight: '500',
+                                                                color: 'var(--text-primary)'
+                                                            }}>
+                                                                {event.title}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-                                        <p style={{ color: 'var(--text-tertiary)', fontSize: '14px', margin: 0 }}>
-                                            No hay eventos completados
-                                        </p>
-                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+                                            <p style={{ color: 'var(--text-tertiary)', fontSize: '14px', margin: 0 }}>
+                                                No hay eventos completados
+                                            </p>
+                                        </div>
+                                    )
                                 )}
                             </div>
                         </div>
