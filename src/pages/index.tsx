@@ -1858,7 +1858,7 @@ export const Calendar = () => {
     const [tasksOpen, setTasksOpen] = useState(false);
     const [editingTaskInModal, setEditingTaskInModal] = useState<string | null>(null);
     const [showTaskForm, setShowTaskForm] = useState(false);
-    const [completedModalOpen, setCompletedModalOpen] = useState(false);
+    // completedModalOpen removed as it is now unused
     const [completedModalFilter, setCompletedModalFilter] = useState<'today' | 'tomorrow' | 'all' | 'tasks' | 'events' | null>(null);
     const [progressModalOpen, setProgressModalOpen] = useState(false);
     const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ type: 'task' | 'event'; id: string } | null>(null);
@@ -1981,17 +1981,6 @@ export const Calendar = () => {
             }));
     }, [safeEvents, today, parseDateFromString]);
     
-    const completedDayEvents = useMemo(() => {
-        if (!Array.isArray(safeEvents)) return [];
-        return safeEvents
-            .filter((event) => event && event.event_date === todayDateString && event.completed)
-            .map((event) => ({
-                id: event.id || '',
-                title: event.title || '',
-                meta: event.description || '',
-                time: event.event_time || ''
-            }));
-    }, [safeEvents, todayDateString]);
 
     // Todos los eventos completados ordenados por fecha
     const allCompletedEvents = useMemo(() => {
@@ -2145,8 +2134,6 @@ export const Calendar = () => {
     const pendingTodayTasks = useMemo(() => todayTasks.filter(task => task && !task.completed), [todayTasks]);
     const completedTodayTasks = useMemo(() => todayTasks.filter(task => task && task.completed), [todayTasks]);
     
-    // Filtrar tareas de mañana: completadas (pendientes no se usan actualmente)
-    const completedTomorrowTasks = useMemo(() => tomorrowTasks.filter(task => task && task.completed), [tomorrowTasks]);
     
     const visibleTasks = useMemo(() => pendingTasks.slice(0, 3), [pendingTasks]);
     
@@ -2809,345 +2796,104 @@ export const Calendar = () => {
         setCalendarOpen(true);
     };
 
-    const SwipeCompletedTaskItem = ({
+    const StaticCompletedTaskItem = ({
         task
     }: {
         task: { id: string; title: string; meta: string; priority: string; completed?: boolean };
     }) => {
-        const [offset, setOffset] = useState(0);
-        const [open, setOpen] = useState(false);
-        const [isRestoring, setIsRestoring] = useState(false);
-        const [isExiting, setIsExiting] = useState(false);
-        const startXRef = useRef<number | null>(null);
-        const draggingRef = useRef(false);
-
-        const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-            startXRef.current = event.clientX - offset;
-            draggingRef.current = true;
-        };
-
-        const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-            if (!draggingRef.current || startXRef.current === null) return;
-            const deltaX = event.clientX - startXRef.current;
-            if (Math.abs(deltaX) < 6) return;
-            // Deslizar de izquierda a derecha (opuesto al normal)
-            const next = Math.min(120, Math.max(0, deltaX));
-            setOffset(next);
-            setOpen(next > 10);
-        };
-
-        const onPointerUp = () => {
-            if (!draggingRef.current) return;
-            draggingRef.current = false;
-            if (offset > 60) {
-                // Si se deslizó lo suficiente, restaurar la tarea
-                handleRestore();
-            } else {
-                setOffset(0);
-                setOpen(false);
-            }
-        };
-
-        const handleRestore = () => {
-            setIsRestoring(true);
-            setTimeout(() => {
-                setIsExiting(true);
-            }, 100);
-        };
-
-        const handleAnimationComplete = () => {
-            if (isExiting && task?.id) {
-                try {
-                    updateTask(task.id, { completed: false });
-                } catch (error) {
-                    console.error("Error restaurando tarea:", error);
-                }
-            }
-        };
-
-        // Para deslizar de izquierda a derecha, el botón debe estar a la izquierda
-        const actionsTranslate = offset - 120;
-
         return (
-            <motion.div
-                className={clsx("swipe-row", open && "open")}
-                layout
-                initial={{ opacity: 1, scale: 1 }}
-                animate={isExiting ? { 
-                    opacity: 0, 
-                    scale: 0.98,
-                    height: 0,
-                    marginBottom: 0
-                } : { 
-                    opacity: 1, 
-                    scale: 1
+            <div
+                className="list-item"
+                style={{
+                    padding: '12px',
+                    borderBottom: '1px solid var(--glass-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.03)'
                 }}
-                transition={{ 
-                    opacity: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] },
-                    scale: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] },
-                    height: { 
-                        duration: 0.35, 
-                        ease: [0.25, 0.1, 0.25, 1],
-                        delay: 0.05
-                    },
-                    marginBottom: { 
-                        duration: 0.35, 
-                        ease: [0.25, 0.1, 0.25, 1],
-                        delay: 0.05
-                    },
-                    layout: { 
-                        duration: 0.35, 
-                        ease: [0.25, 0.1, 0.25, 1]
-                    }
-                }}
-                onAnimationComplete={handleAnimationComplete}
-                style={{ overflow: "hidden" }}
             >
-                <motion.div
-                    className="swipe-actions"
-                    animate={{ 
-                        transform: `translateX(${actionsTranslate}px)`
-                    }}
-                    transition={{ 
-                        type: "spring", 
-                        stiffness: 300, 
-                        damping: 30 
-                    }}
-                    style={{ 
-                        left: 0,
-                        right: 'auto',
-                        width: '120px',
-                        position: 'absolute',
-                        top: 0,
-                        bottom: 0,
-                        display: 'flex',
-                        alignItems: 'stretch',
-                        gap: 0,
-                        padding: 0,
-                        pointerEvents: open ? 'auto' : 'none'
-                    }}
-                >
-                    <button
-                        className="swipe-action edit"
-                        onClick={handleRestore}
-                        style={{ 
-                            backgroundColor: 'var(--ios-green)',
-                            borderRadius: '12px 0 0 12px',
-                            width: '100%',
-                            border: 'none',
-                            padding: '0 10px',
-                            fontSize: '10px',
-                            fontWeight: '600',
-                            color: '#ffffff',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        Restaurar
-                    </button>
-                </motion.div>
-                <motion.div
-                    className={clsx("list-item swipe-content", open && "open")}
-                    animate={{ 
-                        transform: `translateX(${offset}px)`,
-                        opacity: isRestoring ? 0.6 : 0.7
-                    }}
-                    transition={{ 
-                        type: "spring", 
-                        stiffness: 300, 
-                        damping: 30 
-                    }}
-                    style={{ 
-                        background: 'transparent',
-                        position: 'relative',
-                        zIndex: 1
-                    }}
-                    onPointerDown={onPointerDown}
-                    onPointerMove={onPointerMove}
-                    onPointerUp={onPointerUp}
-                    onPointerCancel={onPointerUp}
-                >
-                    <div className="list-icon" style={{ backgroundColor: 'transparent', color: 'var(--ios-blue)' }}>
-                        <SFCheckCircle size={18} />
-                    </div>
-                    <div className="list-content">
-                        <p style={{ textDecoration: 'line-through', color: 'var(--text-secondary)' }}>{task.title}</p>
-                        <span style={{ color: 'var(--text-tertiary)' }}>{task.meta}</span>
-                    </div>
-                    <span className="list-time" style={{ color: 'var(--text-tertiary)' }}>{task.priority}</span>
-                </motion.div>
-            </motion.div>
+                <div className="list-icon" style={{ backgroundColor: 'transparent', color: 'var(--ios-green)' }}>
+                    <SFCheckCircle size={18} />
+                </div>
+                <div className="list-content">
+                    <p style={{ textDecoration: 'none', color: 'var(--text-primary)', fontWeight: '500' }}>{task.title}</p>
+                    <span style={{ color: 'var(--text-tertiary)' }}>{task.meta}</span>
+                </div>
+                <span className="list-time" style={{ color: 'var(--text-tertiary)' }}>{task.priority}</span>
+            </div>
         );
     };
 
-    const SwipeCompletedEventItem = ({
+    const StaticCompletedEventItem = ({
         event
     }: {
-        event: { id: string; title: string; meta: string; time: string };
+        event: { id: string; title: string; meta: string; time: string; event_date?: string };
     }) => {
-        const [offset, setOffset] = useState(0);
-        const [open, setOpen] = useState(false);
-        const [isRestoring, setIsRestoring] = useState(false);
-        const [isExiting, setIsExiting] = useState(false);
-        const startXRef = useRef<number | null>(null);
-        const draggingRef = useRef(false);
-
-        const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-            startXRef.current = event.clientX - offset;
-            draggingRef.current = true;
-        };
-
-        const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-            if (!draggingRef.current || startXRef.current === null) return;
-            const deltaX = event.clientX - startXRef.current;
-            if (Math.abs(deltaX) < 6) return;
-            // Deslizar de izquierda a derecha (opuesto al normal)
-            const next = Math.min(120, Math.max(0, deltaX));
-            setOffset(next);
-            setOpen(next > 10);
-        };
-
-        const onPointerUp = () => {
-            if (!draggingRef.current) return;
-            draggingRef.current = false;
-            if (offset > 60) {
-                // Si se deslizó lo suficiente, restaurar el evento
-                handleRestore();
-            } else {
-                setOffset(0);
-                setOpen(false);
-            }
-        };
-
-        const handleRestore = () => {
-            setIsRestoring(true);
-            setTimeout(() => {
-                setIsExiting(true);
-            }, 100);
-        };
-
-        const handleAnimationComplete = () => {
-            if (isExiting && event?.id) {
-                try {
-                    updateEvent(event.id, { completed: false });
-                } catch (error) {
-                    console.error("Error restaurando evento:", error);
+        let formattedDate = '';
+        try {
+            if (event.event_date) {
+                const eventDate = parseDateFromString(event.event_date);
+                if (!isNaN(eventDate.getTime())) {
+                    formattedDate = eventDate.toLocaleDateString('es-ES', {
+                        day: 'numeric',
+                        weekday: 'short'
+                    });
+                } else {
+                    formattedDate = event.event_date;
                 }
             }
-        };
-
-        // Para deslizar de izquierda a derecha, el botón debe estar a la izquierda
-        const actionsTranslate = offset - 120;
+        } catch (error) {
+            formattedDate = event.event_date || '';
+        }
 
         return (
-            <motion.div
-                className={clsx("swipe-row", open && "open")}
-                layout
-                initial={{ opacity: 1, scale: 1 }}
-                animate={isExiting ? { 
-                    opacity: 0, 
-                    scale: 0.98,
-                    height: 0,
-                    marginBottom: 0
-                } : { 
-                    opacity: 1, 
-                    scale: 1
+            <div
+                className="list-item"
+                style={{
+                    padding: '12px',
+                    borderBottom: '1px solid var(--glass-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.03)'
                 }}
-                transition={{ 
-                    opacity: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] },
-                    scale: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] },
-                    height: { 
-                        duration: 0.35, 
-                        ease: [0.25, 0.1, 0.25, 1],
-                        delay: 0.05
-                    },
-                    marginBottom: { 
-                        duration: 0.35, 
-                        ease: [0.25, 0.1, 0.25, 1],
-                        delay: 0.05
-                    },
-                    layout: { 
-                        duration: 0.35, 
-                        ease: [0.25, 0.1, 0.25, 1]
-                    }
-                }}
-                onAnimationComplete={handleAnimationComplete}
-                style={{ overflow: "hidden" }}
             >
-                <motion.div
-                    className="swipe-actions"
-                    animate={{ 
-                        transform: `translateX(${actionsTranslate}px)`
-                    }}
-                    transition={{ 
-                        type: "spring", 
-                        stiffness: 300, 
-                        damping: 30 
-                    }}
-                    style={{ 
-                        left: 0,
-                        right: 'auto',
-                        width: '120px',
-                        position: 'absolute',
-                        top: 0,
-                        bottom: 0,
-                        display: 'flex',
-                        alignItems: 'stretch',
-                        gap: 0,
-                        padding: 0,
-                        pointerEvents: open ? 'auto' : 'none'
-                    }}
-                >
-                    <button
-                        className="swipe-action edit"
-                        onClick={handleRestore}
-                        style={{ 
-                            backgroundColor: 'var(--ios-green)',
-                            borderRadius: '12px 0 0 12px',
-                            width: '100%',
-                            border: 'none',
-                            padding: '0 10px',
-                            fontSize: '10px',
-                            fontWeight: '600',
-                            color: '#ffffff',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        Restaurar
-                    </button>
-                </motion.div>
-                <motion.div
-                    className={clsx("day-event-item horizontal swipe-content", open && "open")}
-                    animate={{ 
-                        transform: `translateX(${offset}px)`,
-                        opacity: isRestoring ? 0.6 : 0.7
-                    }}
-                    transition={{ 
-                        type: "spring", 
-                        stiffness: 300, 
-                        damping: 30 
-                    }}
-                    style={{ 
-                        background: 'transparent',
-                        position: 'relative',
-                        zIndex: 1
-                    }}
-                    onPointerDown={onPointerDown}
-                    onPointerMove={onPointerMove}
-                    onPointerUp={onPointerUp}
-                    onPointerCancel={onPointerUp}
-                >
-                    <div className="day-event-badge" style={{ backgroundColor: 'transparent', color: 'var(--ios-blue)' }}>
-                        <SFCheckCircle size={16} />
-                    </div>
-                    <div className="day-event-info">
-                        <span className="day-event-title" style={{ textDecoration: 'line-through', color: 'var(--text-secondary)' }}>{event.title}</span>
-                        <span className="day-event-meta" style={{ color: 'var(--text-tertiary)' }}>{event.meta}</span>
-                        <span className="day-event-time-range" style={{ color: 'var(--text-tertiary)' }}>{event.time}</span>
-                    </div>
-                </motion.div>
-            </motion.div>
+                <div style={{
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: 'var(--text-secondary)',
+                    textTransform: 'capitalize',
+                    minWidth: '40px',
+                    textAlign: 'center',
+                    lineHeight: '1.2'
+                }}>
+                    {formattedDate}
+                </div>
+                <div style={{ flex: 1 }}>
+                    <p style={{
+                        margin: 0,
+                        fontSize: '15px',
+                        fontWeight: '500',
+                        color: 'var(--text-primary)'
+                    }}>
+                        {event.title}
+                    </p>
+                    {event.meta && (
+                        <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', display: 'block', marginTop: '2px' }}>
+                            {event.meta}
+                        </span>
+                    )}
+                </div>
+                {event.time && (
+                    <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
+                        {event.time}
+                    </span>
+                )}
+            </div>
         );
     };
+
 
     const SwipeTaskItem = ({
         task
@@ -4239,10 +3985,55 @@ export const Calendar = () => {
                                 {completedModalFilter === 'tasks' ? (
                                     // Vista de Tareas Completadas
                                     completedTasks.length > 0 ? (
-                                        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                            {completedTasks.map((task) => (
-                                                <SwipeCompletedTaskItem key={task.id} task={task} />
-                                            ))}
+                                        <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '4px' }}>
+                                            {(() => {
+                                                const groups: { [key: string]: typeof completedTasks } = {};
+                                                completedTasks.forEach(task => {
+                                                    let dateObj: Date | null = null;
+                                                    // Intentar extraer fecha de meta
+                                                    if (task.meta) {
+                                                        if (task.meta.includes('Hoy')) {
+                                                            dateObj = today;
+                                                        } else {
+                                                            // Intentar parsear fecha simple
+                                                            const dateStr = extractTaskDate(task);
+                                                            if (dateStr) {
+                                                                dateObj = parseDateFromString(dateStr);
+                                                            }
+                                                        }
+                                                    }
+                                                    
+                                                    const monthKey = dateObj && !isNaN(dateObj.getTime()) 
+                                                        ? dateObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+                                                        : 'Sin fecha';
+                                                        
+                                                    if (!groups[monthKey]) groups[monthKey] = [];
+                                                    groups[monthKey].push(task);
+                                                });
+
+                                                return Object.entries(groups).map(([month, tasks]) => (
+                                                    <div key={month} style={{ marginBottom: '20px' }}>
+                                                        <h5 style={{
+                                                            fontSize: '12px',
+                                                            fontWeight: '600',
+                                                            color: 'var(--text-tertiary)',
+                                                            marginBottom: '8px',
+                                                            textTransform: 'capitalize',
+                                                            paddingLeft: '4px',
+                                                            letterSpacing: '0.5px'
+                                                        }}>
+                                                            {month}
+                                                        </h5>
+                                                        <div className="list-card" style={{ gap: 0, overflow: 'hidden' }}>
+                                                            {tasks.map((task, index) => (
+                                                                <div key={task.id} style={{ borderBottom: index === tasks.length - 1 ? 'none' : '1px solid var(--glass-border)' }}>
+                                                                    <StaticCompletedTaskItem task={task} />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ));
+                                            })()}
                                         </div>
                                     ) : (
                                         <div style={{ padding: '40px 20px', textAlign: 'center' }}>
@@ -4254,56 +4045,46 @@ export const Calendar = () => {
                                 ) : (
                                     // Vista de Eventos Completados (Default)
                                     allCompletedEvents.length > 0 ? (
-                                        <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                            {allCompletedEvents.map((event) => {
-                                                let formattedDate = '';
-                                                try {
-                                                    const eventDate = parseDateFromString(event.event_date);
-                                                    if (!isNaN(eventDate.getTime())) {
-                                                        formattedDate = eventDate.toLocaleDateString('es-ES', {
-                                                            day: 'numeric',
-                                                            month: 'long'
-                                                        });
-                                                    } else {
-                                                        formattedDate = event.event_date;
+                                        <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '4px' }}>
+                                            {(() => {
+                                                const groups: { [key: string]: typeof allCompletedEvents } = {};
+                                                allCompletedEvents.forEach(event => {
+                                                    let dateObj: Date | null = null;
+                                                    if (event.event_date) {
+                                                        dateObj = parseDateFromString(event.event_date);
                                                     }
-                                                } catch (error) {
-                                                    formattedDate = event.event_date;
-                                                }
-                                                
-                                                return (
-                                                    <div
-                                                        key={event.id}
-                                                        className="list-item"
-                                                        style={{
-                                                            display: 'flex',
-                                                            flexDirection: 'column',
-                                                            gap: '8px',
-                                                            padding: '12px',
-                                                            borderBottom: '1px solid var(--glass-border)'
-                                                        }}
-                                                    >
-                                                        <div style={{
+                                                    
+                                                    const monthKey = dateObj && !isNaN(dateObj.getTime())
+                                                        ? dateObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+                                                        : 'Sin fecha';
+                                                        
+                                                    if (!groups[monthKey]) groups[monthKey] = [];
+                                                    groups[monthKey].push(event);
+                                                });
+
+                                                return Object.entries(groups).map(([month, events]) => (
+                                                    <div key={month} style={{ marginBottom: '20px' }}>
+                                                        <h5 style={{
                                                             fontSize: '12px',
                                                             fontWeight: '600',
-                                                            color: 'var(--text-secondary)',
-                                                            textTransform: 'capitalize'
+                                                            color: 'var(--text-tertiary)',
+                                                            marginBottom: '8px',
+                                                            textTransform: 'capitalize',
+                                                            paddingLeft: '4px',
+                                                            letterSpacing: '0.5px'
                                                         }}>
-                                                            {formattedDate}
-                                                        </div>
-                                                        <div style={{ flex: 1 }}>
-                                                            <p style={{
-                                                                margin: 0,
-                                                                fontSize: '15px',
-                                                                fontWeight: '500',
-                                                                color: 'var(--text-primary)'
-                                                            }}>
-                                                                {event.title}
-                                                            </p>
+                                                            {month}
+                                                        </h5>
+                                                        <div className="list-card" style={{ gap: 0, overflow: 'hidden' }}>
+                                                            {events.map((event, index) => (
+                                                                <div key={event.id} style={{ borderBottom: index === events.length - 1 ? 'none' : '1px solid var(--glass-border)' }}>
+                                                                    <StaticCompletedEventItem event={event} />
+                                                                </div>
+                                                            ))}
                                                         </div>
                                                     </div>
-                                                );
-                                            })}
+                                                ));
+                                            })()}
                                         </div>
                                     ) : (
                                         <div style={{ padding: '40px 20px', textAlign: 'center' }}>
@@ -4319,114 +4100,6 @@ export const Calendar = () => {
                 </div>
             )}
 
-            {completedModalOpen && (
-                <div className="calendar-modal">
-                    <button
-                        className="calendar-backdrop"
-                        aria-label="Cerrar completados"
-                        onClick={() => {
-                            setCompletedModalOpen(false);
-                            setCompletedModalFilter(null);
-                        }}
-                    />
-                    <motion.div
-                        className="calendar-modal-card"
-                        initial={{ opacity: 0, y: 12, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 12, scale: 0.98 }}
-                        transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-                    >
-                        <div className="section-title">
-                            <button
-                                className="link-button"
-                                onClick={() => {
-                                    setCompletedModalOpen(false);
-                                    setCompletedModalFilter(null);
-                                }}
-                                style={{ marginLeft: 'auto' }}
-                            >
-                                Cerrar
-                            </button>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            {(() => {
-                                // Filtrar tareas y eventos según el filtro seleccionado
-                                let filteredCompletedTasks = completedTasks;
-                                let filteredCompletedEvents = completedDayEvents;
-                                
-                                if (completedModalFilter === 'today') {
-                                    // Solo tareas y eventos de hoy
-                                    filteredCompletedTasks = completedTodayTasks;
-                                    filteredCompletedEvents = completedDayEvents;
-                                } else if (completedModalFilter === 'tomorrow') {
-                                    // Solo tareas de mañana
-                                    filteredCompletedTasks = completedTomorrowTasks;
-                                    filteredCompletedEvents = []; // No hay eventos de mañana en este contexto
-                                } else if (completedModalFilter === 'tasks') {
-                                    // Solo tareas completadas (todas)
-                                    filteredCompletedTasks = completedTasks;
-                                    filteredCompletedEvents = [];
-                                }
-                                // Si es 'all' o null, mostrar todos
-                                
-                                return (
-                                    <>
-                                        {filteredCompletedTasks.length > 0 && (
-                                            <div>
-                                                <h4 style={{ 
-                                                    fontSize: '13px', 
-                                                    fontWeight: '600', 
-                                                    color: 'var(--text-secondary)', 
-                                                    marginBottom: '12px',
-                                                    textTransform: 'uppercase',
-                                                    letterSpacing: '0.5px'
-                                                }}>
-                                                    Tareas completadas ({filteredCompletedTasks.length})
-                                                </h4>
-                                                <div className="list-card">
-                                                    {filteredCompletedTasks.map((task) => (
-                                                        <SwipeCompletedTaskItem key={task.id} task={task} />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                        {filteredCompletedEvents.length > 0 && (
-                                            <div>
-                                                <h4 style={{ 
-                                                    fontSize: '13px', 
-                                                    fontWeight: '600', 
-                                                    color: 'var(--text-secondary)', 
-                                                    marginBottom: '12px',
-                                                    textTransform: 'uppercase',
-                                                    letterSpacing: '0.5px'
-                                                }}>
-                                                    Eventos completados ({filteredCompletedEvents.length})
-                                                </h4>
-                                                <div className="list-card">
-                                                    {filteredCompletedEvents.map((event) => (
-                                                        <SwipeCompletedEventItem key={event.id} event={event} />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                        {filteredCompletedTasks.length === 0 && filteredCompletedEvents.length === 0 && (
-                                            <div className="list-card" style={{ padding: '40px 20px', textAlign: 'center' }}>
-                                                <p style={{ color: 'var(--text-tertiary)', fontSize: '14px', margin: 0 }}>
-                                                    {completedModalFilter === 'today' 
-                                                        ? 'No hay tareas o eventos completados hoy'
-                                                        : completedModalFilter === 'tomorrow'
-                                                        ? 'No hay tareas completadas para mañana'
-                                                        : 'No hay tareas o eventos completados'}
-                                                </p>
-                                            </div>
-                                        )}
-                                    </>
-                                );
-                            })()}
-                        </div>
-                    </motion.div>
-                </div>
-            )}
 
             {tasksOpen && (
                 <div className="calendar-modal">
