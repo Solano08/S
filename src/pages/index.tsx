@@ -817,6 +817,21 @@ export const Projects = () => {
 };
 export const Finances = () => {
     const { balance, income, expenses, transactions, addTransaction } = useAppData();
+    
+    // Calcular inversiones
+    const investmentsTotal = useMemo(() => {
+        return (transactions || [])
+            .filter(t => ['Cripto', 'Inversión', 'Inversiones', 'Acciones'].includes(t.category))
+            .reduce((acc, t) => acc + Math.abs(t.amount), 0);
+    }, [transactions]);
+
+    // Filtrar transacciones de inversión
+    const investmentTransactions = useMemo(() => {
+        return (transactions || []).filter(t => 
+            ['Cripto', 'Inversión', 'Inversiones', 'Acciones'].includes(t.category)
+        );
+    }, [transactions]);
+
     const percentUsed = Math.round((expenses / Math.max(income, 1)) * 100);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showInvestmentsModal, setShowInvestmentsModal] = useState(false);
@@ -918,8 +933,11 @@ export const Finances = () => {
                     </div>
                 </section>
 
-                {/* Resumen Financiero - Elegante y Contundente */}
+                    {/* Resumen Financiero - Balance General */}
                 <section className="app-section">
+                    <div className="section-title mb-2">
+                        <h3>Balance General</h3>
+                    </div>
                     <div 
                         className="hero-card" 
                         onClick={() => setShowInvestmentsModal(true)}
@@ -942,10 +960,10 @@ export const Finances = () => {
                         {/* Grid con jerarquía visual */}
                         <div style={{ 
                             display: 'grid', 
-                            gridTemplateColumns: '1.2fr 1fr 1fr',
+                            gridTemplateColumns: '1fr 1fr',
                             gap: '16px'
                         }}>
-                            {/* Ingresos - Más llamativo */}
+                            {/* Ingresos */}
                             <div style={{
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -993,57 +1011,12 @@ export const Finances = () => {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <span style={{ fontSize: '14px', color: 'var(--ios-green)', fontWeight: '600' }}>↑</span>
                                     <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', opacity: 0.8 }}>
-                                        {new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                                        Total acumulado
                                     </span>
                                 </div>
                             </div>
 
-                            {/* Gastos - Menos llamativo */}
-                            <div style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '10px',
-                                padding: '16px',
-                                borderRadius: '12px',
-                                background: 'var(--glass-bg-base)',
-                                border: '1px solid var(--glass-border)'
-                            }}>
-                                <div style={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    gap: '10px'
-                                }}>
-                                    <span style={{ color: 'var(--ios-red)', opacity: 0.8 }}><SFArrowDownRight size={16} /></span>
-                                    <span style={{
-                                        fontSize: '10px',
-                                        fontWeight: '600',
-                                        color: 'var(--text-tertiary)',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.8px',
-                                        opacity: 0.8
-                                    }}>
-                                        Gastos
-                                    </span>
-                                </div>
-                                <h3 style={{ 
-                                    margin: 0, 
-                                    fontSize: '20px', 
-                                    fontWeight: '700',
-                                    color: 'var(--ios-red)',
-                                    lineHeight: '1.1'
-                                }}>
-                                    ${expenses.toLocaleString('es-CO')}
-                                </h3>
-                                <span style={{
-                                    fontSize: '10px',
-                                    color: 'var(--text-tertiary)',
-                                    opacity: 0.7
-                                }}>
-                                    {percentUsed}%
-                                </span>
-                            </div>
-
-                            {/* Inversiones - Más llamativo aún */}
+                            {/* Inversiones */}
                             <div style={{
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -1088,24 +1061,24 @@ export const Finances = () => {
                                     color: 'var(--ios-indigo)',
                                     lineHeight: '1.1'
                                 }}>
-                                    $0
+                                    ${investmentsTotal.toLocaleString('es-CO')}
                                 </h3>
                                 <span style={{
                                     fontSize: '10px',
                                     color: 'var(--text-tertiary)',
                                     opacity: 0.7
                                 }}>
-                                    Sin inversiones
+                                    En crecimiento
                                 </span>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {/* Movimientos recientes */}
+                {/* Registro de Inversiones */}
                 <section className="app-section">
                     <div className="section-title">
-                        <h3>Movimientos recientes</h3>
+                        <h3>Registro de inversiones</h3>
                         <button 
                             className="icon-button"
                             onClick={() => setShowAddModal(true)}
@@ -1116,28 +1089,24 @@ export const Finances = () => {
                         </button>
                     </div>
                     <div className="list-card">
-                        {transactions.length === 0 ? (
+                        {investmentTransactions.length === 0 ? (
                             <div style={{ padding: '40px 20px', textAlign: 'center' }}>
                                 <p style={{ color: 'var(--text-tertiary)', fontSize: '14px', margin: 0 }}>
-                                    No hay movimientos aún
+                                    No hay inversiones registradas
                                 </p>
                             </div>
                         ) : (
-                            transactions.map((tx) => (
+                            investmentTransactions.map((tx) => (
                                 <div className="list-item" key={tx.id}>
                                     <div className="list-icon">
-                                        {tx.amount >= 0 ? (
-                                            <SFTrendingUp size={18} />
-                                        ) : (
-                                            <SFArrowDownRight size={18} />
-                                        )}
+                                        <SFTrendingUp size={18} className="text-blue-500" />
                                     </div>
                                     <div className="list-content">
                                         <p>{tx.title}</p>
                                         <span>{tx.category}</span>
                                     </div>
-                                    <span className={tx.amount >= 0 ? "list-time positive" : "list-time negative"}>
-                                        {tx.amount >= 0 ? "+" : "-"}${Math.abs(tx.amount).toLocaleString('es-CO')}
+                                    <span className="list-time positive">
+                                        ${Math.abs(tx.amount).toLocaleString('es-CO')}
                                     </span>
                                 </div>
                             ))
