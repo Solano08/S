@@ -59,7 +59,7 @@ export function BottomNav() {
                                         >
                                             <SolanoLogo />
                                         </motion.span>
-                                    ) : (
+                                    ) : Icon ? (
                                         <motion.div
                                             animate={{ scale: isActive ? 1.1 : 1 }}
                                             className={clsx(
@@ -69,7 +69,7 @@ export function BottomNav() {
                                         >
                                             <Icon size={22} />
                                         </motion.div>
-                                    )}
+                                    ) : null}
                                 </span>
                                 {!item.isCenter && (
                                     <span className={clsx("tabbar-label", isActive && "tabbar-label-active")}>

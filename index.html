@@ -1,17 +1,204 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="shortcut icon" type="image/png" href="/favicon.png" />
+    
+    <!-- Viewport optimizado para iPhone 13 Pro Max -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Personal Premium Control Center - iOS Native Experience" />
+    <meta name="theme-color" content="#f2f2f7" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    
+    <!-- iOS Safari PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="S" />
+    <meta name="apple-touch-fullscreen" content="yes" />
+    
+    <!-- iOS Splash Screens para iPhone 13 Pro Max (390x844) y otros -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/apple-touch-icon-144x144.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120x120.png" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/apple-touch-icon-114x114.png" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/apple-touch-icon-76x76.png" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/apple-touch-icon-72x72.png" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/apple-touch-icon-60x60.png" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/apple-touch-icon-57x57.png" />
+    
+    <!-- Mask Icon para Safari -->
+    <link rel="mask-icon" href="/mask-icon.svg" color="#f2f2f7" />
+    
+    <!-- Manifest -->
     <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Preconnect para mejor rendimiento -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Preconnect a Supabase para conexión rápida en PWA -->
+    <link rel="preconnect" href="https://udddlykkjcyekfqlhbim.supabase.co" />
+    <link rel="dns-prefetch" href="https://udddlykkjcyekfqlhbim.supabase.co" />
+    
     <title>S | Personal Hub</title>
+    <style>
+      /* Prevenir flash de contenido sin estilo y asegurar carga rápida */
+      * {
+        box-sizing: border-box;
+      }
+      html, body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #f2f2f7;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        overflow-x: hidden;
+        position: relative;
+      }
+      #root {
+        width: 100%;
+        min-height: 100vh;
+        background-color: #f2f2f7;
+        position: relative;
+        overflow-x: hidden;
+      }
+      /* Loading inicial - se oculta cuando React carga */
+      .app-loading {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f2f2f7;
+        z-index: 9999;
+        transition: opacity 0.3s ease;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="app-loading" id="app-loading">
+        <div style="font-size: 14px; color: #666;">Cargando...</div>
+      </div>
+    </div>
+    <!-- Cargar React inmediatamente - no esperar nada -->
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Registrar SW de forma diferida (no bloquea) -->
+    <script>
+      // #region agent log
+      const log = (location, message, data) => {
+        fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            location,
+            message,
+            data,
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1'
+          })
+        }).catch(() => {});
+      };
+      // #endregion
+      
+      // Ocultar loading cuando React cargue
+      window.addEventListener('DOMContentLoaded', () => {
+        // #region agent log
+        log('index.html:DOMContentLoaded', 'DOMContentLoaded event', {
+          hypothesisId: 'A',
+          loadingExists: !!document.getElementById('app-loading'),
+          rootExists: !!document.getElementById('root')
+        });
+        // #endregion
+        
+        setTimeout(() => {
+          const loading = document.getElementById('app-loading');
+          // #region agent log
+          log('index.html:setTimeout', 'Timeout para ocultar loading', {
+            hypothesisId: 'A',
+            loadingFound: !!loading,
+            loadingComputedStyle: loading ? {
+              display: window.getComputedStyle(loading).display,
+              opacity: window.getComputedStyle(loading).opacity,
+              zIndex: window.getComputedStyle(loading).zIndex,
+              visibility: window.getComputedStyle(loading).visibility
+            } : null
+          });
+          // #endregion
+          
+          if (loading) {
+            loading.style.opacity = '0';
+            // #region agent log
+            log('index.html:setOpacity', 'Opacity establecido a 0 en HTML', {
+              hypothesisId: 'A',
+              newOpacity: loading.style.opacity
+            });
+            // #endregion
+            
+            setTimeout(() => {
+              // #region agent log
+              log('index.html:removeTimeout', 'Timeout para remover loading', {
+                hypothesisId: 'A',
+                hasParent: !!loading.parentNode
+              });
+              // #endregion
+              
+              if (loading.parentNode) {
+                loading.parentNode.removeChild(loading);
+                // #region agent log
+                log('index.html:removed', 'Loading removido desde HTML', {
+                  hypothesisId: 'A'
+                });
+                // #endregion
+              }
+            }, 300);
+          }
+        }, 100);
+      });
+      
+      // #region agent log
+      window.addEventListener('error', (e) => {
+        log('index.html:globalError', 'Error global capturado', {
+          hypothesisId: 'D',
+          message: e.message,
+          filename: e.filename,
+          lineno: e.lineno,
+          colno: e.colno,
+          error: e.error ? String(e.error) : null
+        });
+      });
+      
+      window.addEventListener('unhandledrejection', (e) => {
+        log('index.html:unhandledRejection', 'Promise rejection no manejada', {
+          hypothesisId: 'D',
+          reason: e.reason ? String(e.reason) : null
+        });
+      });
+      // #endregion
+      
+      // Registrar SW solo después de que todo cargue (no bloquea)
+      // Comentado temporalmente para evitar problemas
+      /*
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          setTimeout(() => {
+            navigator.serviceWorker.register('/sw.js')
+              .then(() => console.log('✅ SW registrado'))
+              .catch(() => {
+                // Silenciar errores - la app funciona sin SW
+                console.warn('SW no disponible - app funciona normalmente');
+              });
+          }, 5000); // 5 segundos después de la carga
+        });
+      }
+      */
+    </script>
   </body>
 </html>

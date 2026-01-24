@@ -22,6 +22,25 @@ export const supabase =
               realtime: {
                   params: {
                       eventsPerSecond: 10
+                  },
+                  // Configuración mejorada para tiempo real
+                  heartbeatIntervalMs: 30000, // Heartbeat cada 30 segundos
+                  reconnectAfterMs: (tries: number) => {
+                      // Reconexión exponencial: 1s, 2s, 4s, 8s, max 10s
+                      return Math.min(1000 * Math.pow(2, tries), 10000);
+                  }
+              },
+              // Configuración para PWA
+              auth: {
+                  persistSession: true,
+                  autoRefreshToken: true,
+                  detectSessionInUrl: true,
+                  storage: window.localStorage,
+                  storageKey: 'sb-auth-token'
+              },
+              global: {
+                  headers: {
+                      'x-client-info': 'sproject-pwa'
                   }
               }
           })

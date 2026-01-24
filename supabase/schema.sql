@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   title TEXT NOT NULL,
   meta TEXT NOT NULL DEFAULT '',
   priority TEXT NOT NULL DEFAULT 'Media',
+  completed BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS events (
   event_date DATE NOT NULL,
   event_time TEXT NOT NULL DEFAULT '',
   priority TEXT NOT NULL DEFAULT 'Media',
+  completed BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -172,6 +174,20 @@ CREATE TABLE IF NOT EXISTS habits (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Tabla: projects (Proyectos)
+CREATE TABLE IF NOT EXISTS projects (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  start_date DATE,
+  end_date DATE,
+  status TEXT NOT NULL DEFAULT 'not-started' CHECK (status IN ('not-started', 'in-progress', 'completed')),
+  progress INTEGER NOT NULL DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
+  template TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Trigger para actualizar updated_at en habits
 DROP TRIGGER IF EXISTS set_habits_updated_at ON habits;
 CREATE TRIGGER set_habits_updated_at
@@ -179,8 +195,18 @@ BEFORE UPDATE ON habits
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 
+-- Trigger para actualizar updated_at en projects
+DROP TRIGGER IF EXISTS set_projects_updated_at ON projects;
+CREATE TRIGGER set_projects_updated_at
+BEFORE UPDATE ON projects
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
 -- Habilitar Row Level Security (RLS) para habits
 ALTER TABLE habits ENABLE ROW LEVEL SECURITY;
+
+-- Habilitar Row Level Security (RLS) para projects
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de lectura y escritura para habits
 DROP POLICY IF EXISTS "public_read_habits" ON habits;
@@ -204,12 +230,102 @@ CREATE POLICY "public_delete_habits"
   ON habits FOR DELETE
   USING (true);
 
+-- Políticas de lectura y escritura para projects
+DROP POLICY IF EXISTS "public_read_projects" ON projects;
+CREATE POLICY "public_read_projects"
+  ON projects FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "public_insert_projects" ON projects;
+CREATE POLICY "public_insert_projects"
+  ON projects FOR INSERT
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "public_update_projects" ON projects;
+CREATE POLICY "public_update_projects"
+  ON projects FOR UPDATE
+  USING (true)
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "public_delete_projects" ON projects;
+CREATE POLICY "public_delete_projects"
+  ON projects FOR DELETE
+  USING (true);
+
 -- Habilitar Realtime en las tablas para sincronización en tiempo real
-ALTER PUBLICATION supabase_realtime ADD TABLE tasks;
-ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
-ALTER PUBLICATION supabase_realtime ADD TABLE events;
-ALTER PUBLICATION supabase_realtime ADD TABLE app_overview;
-ALTER PUBLICATION supabase_realtime ADD TABLE habits;
+-- Nota: Si las tablas ya están en la publicación, estos comandos ignorarán el error
+-- y continuarán sin problemas. Esto permite ejecutar el script múltiples veces.
+
+DO $$
+BEGIN
+    -- Agregar tasks a realtime (si no está ya agregada)
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE tasks;
+    EXCEPTION WHEN OTHERS THEN
+        -- La tabla ya está en la publicación o hay otro error, continuar
+        IF SQLSTATE = '42710' THEN
+            -- Error específico: relación ya es miembro de la publicación
+            NULL;
+        ELSE
+            RAISE;
+        END IF;
+    END;
+    
+    -- Agregar transactions a realtime (si no está ya agregada)
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
+    EXCEPTION WHEN OTHERS THEN
+        IF SQLSTATE = '42710' THEN
+            NULL;
+        ELSE
+            RAISE;
+        END IF;
+    END;
+    
+    -- Agregar events a realtime (si no está ya agregada)
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE events;
+    EXCEPTION WHEN OTHERS THEN
+        IF SQLSTATE = '42710' THEN
+            NULL;
+        ELSE
+            RAISE;
+        END IF;
+    END;
+    
+    -- Agregar app_overview a realtime (si no está ya agregada)
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE app_overview;
+    EXCEPTION WHEN OTHERS THEN
+        IF SQLSTATE = '42710' THEN
+            NULL;
+        ELSE
+            RAISE;
+        END IF;
+    END;
+    
+    -- Agregar habits a realtime (si no está ya agregada)
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE habits;
+    EXCEPTION WHEN OTHERS THEN
+        IF SQLSTATE = '42710' THEN
+            NULL;
+        ELSE
+            RAISE;
+        END IF;
+    END;
+    
+    -- Agregar projects a realtime (si no está ya agregada)
+    BEGIN
+        ALTER PUBLICATION supabase_realtime ADD TABLE projects;
+    EXCEPTION WHEN OTHERS THEN
+        IF SQLSTATE = '42710' THEN
+            NULL;
+        ELSE
+            RAISE;
+        END IF;
+    END;
+END $$;
 
 -- Insertar datos iniciales en app_overview (si no existen)
 INSERT INTO app_overview (balance, income, expenses)

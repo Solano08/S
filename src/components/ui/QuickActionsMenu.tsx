@@ -16,7 +16,7 @@ type QuickActionsMenuProps = {
 export function QuickActionsMenu({ actions = [] }: QuickActionsMenuProps) {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
-    const quickActions = useMemo(
+    const quickActions = useMemo<QuickActionItem[]>(
         () => [
             {
                 label: "Agregar idea",

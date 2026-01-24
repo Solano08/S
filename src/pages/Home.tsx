@@ -173,18 +173,40 @@ export function Home() {
                         <h3>Tareas puntuales</h3>
                     </div>
                     <div className="list-card">
-                        {tasks.slice(0, 2).map((task) => (
-                            <div className="list-item" key={task.id}>
-                                <div className="list-icon">
-                                    <SFCheckCircle size={18} />
+                        {tasks.slice(0, 2).map((task) => {
+                            const getTaskPriorityColor = (priority: string): string => {
+                                switch (priority) {
+                                    case 'Alta':
+                                        return '#ff453a'; // Rojo iOS
+                                    case 'Media':
+                                        return '#2997ff'; // Azul iOS
+                                    case 'Baja':
+                                        return '#30db5b'; // Verde iOS
+                                    default:
+                                        return '#2997ff'; // Azul por defecto
+                                }
+                            };
+                            return (
+                                <div 
+                                    className="list-item"
+                                    key={task.id}
+                                >
+                                    <div className="list-icon">
+                                        <SFCheckCircle size={18} />
+                                    </div>
+                                    <div className="list-content">
+                                        <p>{task.title}</p>
+                                        <span>{task.meta}</span>
+                                    </div>
+                                    <span 
+                                        className="list-time" 
+                                        style={{ color: getTaskPriorityColor(task.priority || 'Media') }}
+                                    >
+                                        {task.priority}
+                                    </span>
                                 </div>
-                                <div className="list-content">
-                                    <p>{task.title}</p>
-                                    <span>{task.meta}</span>
-                                </div>
-                                <span className="list-time">{task.priority}</span>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </motion.section>
             </motion.div>

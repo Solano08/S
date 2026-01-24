@@ -47,5 +47,21 @@ El schema crea las siguientes tablas:
 - **tasks**: Tareas puntuales
 - **transactions**: Transacciones financieras
 - **events**: Eventos del calendario
+- **habits**: Hábitos
+- **projects**: Proyectos
 
 Cada tabla tiene Row Level Security (RLS) habilitado con políticas públicas para lectura y escritura.
+
+## ⚠️ IMPORTANTE: Crear la tabla Projects
+
+Si recibes un error que dice "Could not find the table 'public.projects'", necesitas crear la tabla:
+
+1. Ve a https://app.supabase.com
+2. Selecciona tu proyecto
+3. Ve a **SQL Editor**
+4. Abre el archivo `supabase/add-projects-table.sql` de este proyecto
+5. Copia todo el contenido
+6. Pégalo en el SQL Editor de Supabase
+7. Haz clic en **Run** (o presiona Ctrl+Enter)
+8. Deberías ver un mensaje de éxito
+9. Recarga la aplicación en tu navegador
