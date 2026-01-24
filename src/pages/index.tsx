@@ -818,11 +818,33 @@ export const Projects = () => {
 const INVESTMENT_CATEGORIES = [
     { id: 'home', label: 'Casa', icon: '🏠' },
     { id: 'clothing', label: 'Ropa', icon: '👕' },
-    { id: 'crypto', label: 'Cripto', icon: '₿', subcategories: ['BTC', 'ETH', 'SOL', 'USDT', 'BNB'] },
+    { 
+        id: 'crypto', 
+        label: 'Cripto', 
+        icon: '₿', 
+        subcategories: [
+            { id: 'BTC', label: 'Bitcoin', icon: '₿' },
+            { id: 'ETH', label: 'Ethereum', icon: 'Ξ' },
+            { id: 'SOL', label: 'Solana', icon: '◎' },
+            { id: 'USDT', label: 'USDT', icon: '₮' },
+            { id: 'BNB', label: 'BNB', icon: '🟡' }
+        ] 
+    },
     { id: 'cars', label: 'Carros', icon: '🚗' },
     { id: 'food', label: 'Comida', icon: '🍔' },
     { id: 'shopping', label: 'Compras', icon: '🛍️' },
-    { id: 'entertainment', label: 'Entretenimiento', icon: '🎬', subcategories: ['Spotify', 'Netflix', 'Disney+', 'Prime Video', 'Apple TV'] },
+    { 
+        id: 'entertainment', 
+        label: 'Entretenimiento', 
+        icon: '🎬', 
+        subcategories: [
+            { id: 'Spotify', label: 'Spotify', icon: '🎧' },
+            { id: 'Netflix', label: 'Netflix', icon: '🎬' },
+            { id: 'Disney+', label: 'Disney+', icon: '🏰' },
+            { id: 'Prime', label: 'Prime Video', icon: '📦' },
+            { id: 'AppleTV', label: 'Apple TV', icon: '🍎' }
+        ] 
+    },
 ];
 
 export const Finances = () => {
@@ -848,7 +870,7 @@ export const Finances = () => {
     const [step, setStep] = useState(1);
     const [amount, setAmount] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<typeof INVESTMENT_CATEGORIES[0] | null>(null);
-    const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+    const [selectedSubcategory, setSelectedSubcategory] = useState<{id: string, label: string, icon: string} | null>(null);
     const [balanceCalculatorOpen, setBalanceCalculatorOpen] = useState(false);
     const [balanceCalculatorValue, setBalanceCalculatorValue] = useState(1000000);
 
@@ -859,7 +881,7 @@ export const Finances = () => {
         if (isNaN(numAmount) || numAmount <= 0) return;
 
         addTransaction({
-            title: selectedSubcategory || selectedCategory.label,
+            title: selectedSubcategory?.label || selectedCategory.label,
             category: selectedCategory.label,
             amount: -numAmount // Siempre negativo como gasto/inversión (salida de dinero)
         });
@@ -1114,35 +1136,15 @@ export const Finances = () => {
                             <div 
                                 onClick={() => setShowAddModal(true)}
                                 style={{ 
-                                    padding: '40px 20px', 
-                                    textAlign: 'center',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    borderRadius: '16px'
-                                }}
-                                className="group hover:bg-[var(--bg-secondary)] active:scale-[0.98]"
-                            >
-                                <div style={{ 
-                                    width: '48px', 
-                                    height: '48px', 
-                                    borderRadius: '50%', 
-                                    background: 'var(--glass-bg-base)', 
-                                    border: '1px solid var(--glass-border)',
-                                    display: 'flex', 
-                                    alignItems: 'center', 
+                                    padding: '20px', 
+                                    display: 'flex',
                                     justifyContent: 'center',
-                                    margin: '0 auto 12px',
-                                    color: 'var(--ios-blue)',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-                                }}>
-                                    <SFPlus size={24} />
-                                </div>
-                                <p style={{ color: 'var(--text-primary)', fontSize: '15px', fontWeight: '600', marginBottom: '4px' }}>
-                                    Registrar nueva inversión
-                                </p>
-                                <p style={{ color: 'var(--text-tertiary)', fontSize: '13px' }}>
-                                    Toca para agregar un movimiento
-                                </p>
+                                    alignItems: 'center',
+                                    cursor: 'pointer',
+                                    background: 'transparent'
+                                }}
+                            >
+                                <SFPlus size={32} color="var(--ios-blue)" />
                             </div>
                         ) : (
                             <>
@@ -1160,30 +1162,19 @@ export const Finances = () => {
                                         </span>
                                     </div>
                                 ))}
-                                <button 
+                                <div 
                                     onClick={() => setShowAddModal(true)}
                                     style={{
-                                        width: '100%',
-                                        padding: '16px',
-                                        marginTop: '8px',
-                                        borderRadius: '12px',
-                                        border: '1px dashed var(--glass-border)',
-                                        background: 'rgba(255, 255, 255, 0.02)',
-                                        color: 'var(--text-secondary)',
-                                        fontSize: '14px',
-                                        fontWeight: '500',
-                                        cursor: 'pointer',
                                         display: 'flex',
-                                        alignItems: 'center',
                                         justifyContent: 'center',
-                                        gap: '8px',
-                                        transition: 'all 0.2s'
+                                        alignItems: 'center',
+                                        padding: '16px',
+                                        cursor: 'pointer',
+                                        marginTop: '8px'
                                     }}
-                                    className="hover:bg-[var(--bg-secondary)] active:scale-[0.99]"
                                 >
-                                    <SFPlus size={16} />
-                                    <span>Agregar nueva inversión</span>
-                                </button>
+                                    <SFPlus size={24} color="var(--ios-blue)" />
+                                </div>
                             </>
                         )}
                     </div>
@@ -1309,271 +1300,271 @@ export const Finances = () => {
                 )}
             </AnimatePresence>
 
-            {/* Modal para agregar movimiento */}
+            {/* Vista Completa para agregar movimiento (Tipo Grid) */}
             {showAddModal && (
                 <div 
-                    className="calendar-backdrop" 
-                    onClick={() => {
-                        setShowAddModal(false);
-                        setStep(1);
-                        setAmount("");
-                        setSelectedCategory(null);
-                        setSelectedSubcategory(null);
-                    }}
                     style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 50,
+                        background: 'var(--bg-primary)',
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'rgba(0, 0, 0, 0.6)',
-                        backdropFilter: 'blur(8px)'
+                        flexDirection: 'column',
+                        overflow: 'hidden'
                     }}
                 >
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="calendar-modal-card"
-                        onClick={(e) => e.stopPropagation()}
-                        style={{ 
-                            maxWidth: '380px', 
-                            width: '90%', 
-                            maxHeight: '85vh',
-                            background: 'var(--glass-bg-base)',
-                            border: '1px solid var(--glass-border)',
-                            borderRadius: '24px',
-                            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-                            overflow: 'hidden'
-                        }}
-                    >
-                        <div style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center',
-                            padding: '20px 24px',
-                            borderBottom: '1px solid var(--glass-border)'
-                        }}>
-                            <div>
-                                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                                    {step === 1 ? 'Nueva Inversión' : step === 2 ? 'Detalle' : 'Monto'}
-                                </h2>
-                                <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-tertiary)' }}>
-                                    {step === 1 ? 'Selecciona una categoría' : step === 2 ? 'Especifica el tipo' : 'Ingresa el valor'}
-                                </p>
-                            </div>
-                            <button
-                                className="icon-button"
-                                onClick={() => {
-                                    setShowAddModal(false);
-                                    setStep(1);
-                                    setAmount("");
-                                    setSelectedCategory(null);
-                                    setSelectedSubcategory(null);
-                                }}
-                                aria-label="Cerrar"
-                                style={{ background: 'rgba(128,128,128,0.1)' }}
-                            >
-                                ×
-                            </button>
+                    <div style={{ 
+                        padding: '16px 20px',
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        borderBottom: '1px solid var(--glass-border)'
+                    }}>
+                        <div>
+                            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                                {step === 1 ? 'Seleccionar Inversión' : step === 2 ? 'Detalle' : 'Monto'}
+                            </h2>
                         </div>
+                        <button
+                            onClick={() => {
+                                setShowAddModal(false);
+                                setStep(1);
+                                setAmount("");
+                                setSelectedCategory(null);
+                                setSelectedSubcategory(null);
+                            }}
+                            style={{ 
+                                background: 'rgba(128,128,128,0.1)', 
+                                border: 'none', 
+                                width: '32px', 
+                                height: '32px', 
+                                borderRadius: '50%',
+                                fontSize: '20px',
+                                color: 'var(--text-primary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            ×
+                        </button>
+                    </div>
 
-                        <div style={{ padding: '24px', overflowY: 'auto', maxHeight: 'calc(85vh - 80px)' }}>
-                            {/* Paso 1: Selección de Categoría */}
-                            {step === 1 && (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-                                    {INVESTMENT_CATEGORIES.map((cat) => (
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                        {/* Paso 1: Selección de Categoría (Grid Uniforme) */}
+                        {step === 1 && (
+                            <div style={{ 
+                                display: 'grid', 
+                                gridTemplateColumns: 'repeat(3, 1fr)', 
+                                gap: '16px',
+                                maxWidth: '600px',
+                                margin: '0 auto'
+                            }}>
+                                {INVESTMENT_CATEGORIES.map((cat) => (
+                                    <motion.button
+                                        key={cat.id}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => {
+                                            setSelectedCategory(cat);
+                                            if (cat.subcategories) {
+                                                setStep(2);
+                                            } else {
+                                                setStep(3);
+                                            }
+                                        }}
+                                        style={{
+                                            aspectRatio: '1',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '12px',
+                                            borderRadius: '20px',
+                                            border: '1px solid var(--glass-border)',
+                                            background: 'rgba(255, 255, 255, 0.03)',
+                                            color: 'var(--text-primary)',
+                                            cursor: 'pointer',
+                                            padding: '10px'
+                                        }}
+                                    >
+                                        <span style={{ fontSize: '36px' }}>{cat.icon}</span>
+                                        <span style={{ fontSize: '13px', fontWeight: '600' }}>{cat.label}</span>
+                                    </motion.button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Paso 2: Selección de Subcategoría (Grid Uniforme) */}
+                        {step === 2 && selectedCategory && (
+                            <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                <div style={{ 
+                                    display: 'grid', 
+                                    gridTemplateColumns: 'repeat(3, 1fr)', 
+                                    gap: '16px',
+                                    marginBottom: '20px'
+                                }}>
+                                    {selectedCategory.subcategories?.map((sub) => (
                                         <motion.button
-                                            key={cat.id}
-                                            whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.08)' }}
+                                            key={sub.id}
                                             whileTap={{ scale: 0.95 }}
                                             onClick={() => {
-                                                setSelectedCategory(cat);
-                                                if (cat.subcategories) {
-                                                    setStep(2);
-                                                } else {
-                                                    setStep(3);
-                                                }
+                                                setSelectedSubcategory(sub);
+                                                setStep(3);
                                             }}
                                             style={{
+                                                aspectRatio: '1',
                                                 display: 'flex',
                                                 flexDirection: 'column',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
                                                 gap: '12px',
-                                                padding: '20px 12px',
                                                 borderRadius: '20px',
                                                 border: '1px solid var(--glass-border)',
                                                 background: 'rgba(255, 255, 255, 0.03)',
                                                 color: 'var(--text-primary)',
                                                 cursor: 'pointer',
-                                                height: '110px'
+                                                padding: '10px'
                                             }}
                                         >
-                                            <span style={{ fontSize: '32px', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.1))' }}>{cat.icon}</span>
-                                            <span style={{ fontSize: '13px', fontWeight: '600' }}>{cat.label}</span>
+                                            <span style={{ fontSize: '36px' }}>{sub.icon}</span>
+                                            <span style={{ fontSize: '13px', fontWeight: '600' }}>{sub.label}</span>
                                         </motion.button>
                                     ))}
                                 </div>
-                            )}
+                                <button
+                                    onClick={() => {
+                                        setStep(1);
+                                        setSelectedCategory(null);
+                                    }}
+                                    style={{
+                                        marginTop: 'auto',
+                                        padding: '16px',
+                                        background: 'transparent',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '16px',
+                                        color: 'var(--text-primary)',
+                                        fontSize: '16px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    ← Volver a categorías
+                                </button>
+                            </div>
+                        )}
 
-                            {/* Paso 2: Selección de Subcategoría (si aplica) */}
-                            {step === 2 && selectedCategory && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                                        {selectedCategory.subcategories?.map((sub) => (
-                                            <motion.button
-                                                key={sub}
-                                                whileHover={{ scale: 1.02, backgroundColor: 'rgba(255,255,255,0.08)' }}
-                                                whileTap={{ scale: 0.98 }}
-                                                onClick={() => {
-                                                    setSelectedSubcategory(sub);
-                                                    setStep(3);
-                                                }}
-                                                style={{
-                                                    padding: '16px',
-                                                    borderRadius: '16px',
-                                                    border: '1px solid var(--glass-border)',
-                                                    background: 'rgba(255, 255, 255, 0.03)',
-                                                    color: 'var(--text-primary)',
-                                                    fontSize: '15px',
-                                                    fontWeight: '600',
-                                                    cursor: 'pointer',
-                                                    textAlign: 'center'
-                                                }}
-                                            >
-                                                {sub}
-                                            </motion.button>
-                                        ))}
-                                    </div>
-                                    <button
-                                        onClick={() => {
-                                            setStep(1);
-                                            setSelectedCategory(null);
-                                        }}
-                                        style={{
-                                            padding: '12px',
-                                            background: 'transparent',
-                                            border: 'none',
-                                            color: 'var(--text-secondary)',
-                                            fontSize: '14px',
-                                            cursor: 'pointer',
-                                            fontWeight: '500'
-                                        }}
-                                    >
-                                        ← Volver a categorías
-                                    </button>
+                        {/* Paso 3: Monto */}
+                        {step === 3 && selectedCategory && (
+                            <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                <div style={{ textAlign: 'center', padding: '30px', background: 'rgba(255,255,255,0.03)', borderRadius: '24px' }}>
+                                    <span style={{ fontSize: '64px', display: 'block', marginBottom: '16px' }}>
+                                        {selectedSubcategory?.icon || selectedCategory.icon}
+                                    </span>
+                                    <p style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                                        {selectedSubcategory?.label || selectedCategory.label}
+                                    </p>
                                 </div>
-                            )}
 
-                            {/* Paso 3: Monto */}
-                            {step === 3 && selectedCategory && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                                    <div style={{ textAlign: 'center', padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '20px' }}>
-                                        <span style={{ fontSize: '48px', display: 'block', marginBottom: '8px' }}>{selectedCategory.icon}</span>
-                                        <p style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                                            {selectedSubcategory || selectedCategory.label}
-                                        </p>
-                                    </div>
-
-                                    <div>
-                                        <label style={{ 
-                                            fontSize: '13px', 
-                                            fontWeight: '600', 
+                                <div>
+                                    <label style={{ 
+                                        fontSize: '14px', 
+                                        fontWeight: '600', 
+                                        color: 'var(--text-tertiary)',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px',
+                                        marginBottom: '12px',
+                                        display: 'block'
+                                    }}>
+                                        Monto a invertir
+                                    </label>
+                                    <div style={{ position: 'relative' }}>
+                                        <span style={{ 
+                                            position: 'absolute', 
+                                            left: '20px', 
+                                            top: '50%', 
+                                            transform: 'translateY(-50%)', 
+                                            fontSize: '32px', 
                                             color: 'var(--text-tertiary)',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.5px',
-                                            marginBottom: '12px',
-                                            display: 'block'
-                                        }}>
-                                            Monto a invertir
-                                        </label>
-                                        <div style={{ position: 'relative' }}>
-                                            <span style={{ 
-                                                position: 'absolute', 
-                                                left: '20px', 
-                                                top: '50%', 
-                                                transform: 'translateY(-50%)', 
-                                                fontSize: '24px', 
-                                                color: 'var(--text-tertiary)',
-                                                fontWeight: '600'
-                                            }}>$</span>
-                                            <input
-                                                type="number"
-                                                value={amount}
-                                                onChange={(e) => setAmount(e.target.value)}
-                                                placeholder="0"
-                                                autoFocus
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '20px 20px 20px 45px',
-                                                    fontSize: '32px',
-                                                    fontWeight: '700',
-                                                    background: 'rgba(255, 255, 255, 0.06)',
-                                                    border: '1px solid var(--glass-border)',
-                                                    borderRadius: '20px',
-                                                    color: 'var(--text-primary)',
-                                                    outline: 'none',
-                                                    textAlign: 'left'
-                                                }}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        handleAddTransaction();
-                                                    }
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                if (selectedCategory.subcategories) {
-                                                    setStep(2);
-                                                    setSelectedSubcategory(null);
-                                                } else {
-                                                    setStep(1);
-                                                    setSelectedCategory(null);
+                                            fontWeight: '600'
+                                        }}>$</span>
+                                        <input
+                                            type="number"
+                                            value={amount}
+                                            onChange={(e) => setAmount(e.target.value)}
+                                            placeholder="0"
+                                            autoFocus
+                                            style={{
+                                                width: '100%',
+                                                padding: '24px 24px 24px 50px',
+                                                fontSize: '40px',
+                                                fontWeight: '700',
+                                                background: 'rgba(255, 255, 255, 0.06)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '24px',
+                                                color: 'var(--text-primary)',
+                                                outline: 'none',
+                                                textAlign: 'left'
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    handleAddTransaction();
                                                 }
                                             }}
-                                            style={{
-                                                flex: 1,
-                                                padding: '16px',
-                                                borderRadius: '16px',
-                                                border: '1px solid var(--glass-border)',
-                                                background: 'transparent',
-                                                color: 'var(--text-primary)',
-                                                fontSize: '16px',
-                                                fontWeight: '600',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            Atrás
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={handleAddTransaction}
-                                            disabled={!amount || parseFloat(amount) <= 0}
-                                            style={{
-                                                flex: 1,
-                                                padding: '16px',
-                                                borderRadius: '16px',
-                                                border: 'none',
-                                                background: amount && parseFloat(amount) > 0 ? 'var(--ios-blue)' : 'rgba(255, 255, 255, 0.1)',
-                                                color: amount && parseFloat(amount) > 0 ? '#fff' : 'var(--text-tertiary)',
-                                                fontSize: '16px',
-                                                fontWeight: '600',
-                                                cursor: amount && parseFloat(amount) > 0 ? 'pointer' : 'not-allowed',
-                                                transition: 'all 0.2s',
-                                                boxShadow: amount && parseFloat(amount) > 0 ? '0 8px 24px rgba(41, 151, 255, 0.3)' : 'none'
-                                            }}
-                                        >
-                                            Confirmar
-                                        </button>
+                                        />
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                    </motion.div>
+
+                                <div style={{ display: 'flex', gap: '16px', marginTop: '20px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (selectedCategory.subcategories) {
+                                                setStep(2);
+                                                setSelectedSubcategory(null);
+                                            } else {
+                                                setStep(1);
+                                                setSelectedCategory(null);
+                                            }
+                                        }}
+                                        style={{
+                                            flex: 1,
+                                            padding: '18px',
+                                            borderRadius: '20px',
+                                            border: '1px solid var(--glass-border)',
+                                            background: 'transparent',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '16px',
+                                            fontWeight: '600',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        Atrás
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddTransaction}
+                                        disabled={!amount || parseFloat(amount) <= 0}
+                                        style={{
+                                            flex: 1,
+                                            padding: '18px',
+                                            borderRadius: '20px',
+                                            border: 'none',
+                                            background: amount && parseFloat(amount) > 0 ? 'var(--ios-blue)' : 'rgba(255, 255, 255, 0.1)',
+                                            color: amount && parseFloat(amount) > 0 ? '#fff' : 'var(--text-tertiary)',
+                                            fontSize: '16px',
+                                            fontWeight: '600',
+                                            cursor: amount && parseFloat(amount) > 0 ? 'pointer' : 'not-allowed',
+                                            transition: 'all 0.2s',
+                                            boxShadow: amount && parseFloat(amount) > 0 ? '0 8px 24px rgba(41, 151, 255, 0.3)' : 'none'
+                                        }}
+                                    >
+                                        Confirmar
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
