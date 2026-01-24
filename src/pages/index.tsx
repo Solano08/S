@@ -1859,7 +1859,7 @@ export const Calendar = () => {
     const [editingTaskInModal, setEditingTaskInModal] = useState<string | null>(null);
     const [showTaskForm, setShowTaskForm] = useState(false);
     const [completedModalOpen, setCompletedModalOpen] = useState(false);
-    const [completedModalFilter, setCompletedModalFilter] = useState<'today' | 'tomorrow' | 'all' | null>(null);
+    const [completedModalFilter, setCompletedModalFilter] = useState<'today' | 'tomorrow' | 'all' | 'tasks' | null>(null);
     const [progressModalOpen, setProgressModalOpen] = useState(false);
     const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ type: 'task' | 'event'; id: string } | null>(null);
     const [taskTitle, setTaskTitle] = useState("");
@@ -4154,7 +4154,7 @@ export const Calendar = () => {
                                     <div 
                                         onClick={() => {
                                             setCompletedModalOpen(true);
-                                            setCompletedModalFilter('all');
+                                            setCompletedModalFilter('tasks');
                                         }}
                                         style={{
                                             background: 'var(--glass-bg-strong)',
@@ -4303,6 +4303,10 @@ export const Calendar = () => {
                                     // Solo tareas de mañana
                                     filteredCompletedTasks = completedTomorrowTasks;
                                     filteredCompletedEvents = []; // No hay eventos de mañana en este contexto
+                                } else if (completedModalFilter === 'tasks') {
+                                    // Solo tareas completadas (todas)
+                                    filteredCompletedTasks = completedTasks;
+                                    filteredCompletedEvents = [];
                                 }
                                 // Si es 'all' o null, mostrar todos
                                 
