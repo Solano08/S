@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { motion, type Variants } from 'framer-motion';
+import { useMemo, useState, useEffect } from 'react';
+import { motion, type Variants, AnimatePresence } from 'framer-motion';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { QuickActionsMenu } from '../components/ui/QuickActionsMenu';
 import { useAppData } from '../context/AppDataContext';
@@ -16,7 +16,7 @@ import {
 } from '../components/ui/SFIcons';
 
 export function Home() {
-    const { balance, income, expenses, tasks, events, transactions } = useAppData();
+    const { balance, income, expenses, tasks, events, transactions, addTransaction } = useAppData();
     const today = useToday();
     const time = new Date().getHours();
     const greeting = time < 12 ? 'Buenos días' : time < 18 ? 'Buenas tardes' : 'Buenas noches';
@@ -25,6 +25,28 @@ export function Home() {
         month: 'long',
         day: 'numeric'
     });
+
+    const [isBalanceExpanded, setIsBalanceExpanded] = useState(false);
+    const [newIncomeAmount, setNewIncomeAmount] = useState('');
+    const [newIncomeDesc, setNewIncomeDesc] = useState('');
+
+    const handleSaveIncome = () => {
+        if (!newIncomeAmount) return;
+        
+        const amount = parseFloat(newIncomeAmount.replace(/[^0-9.]/g, ''));
+        if (isNaN(amount) || amount <= 0) return;
+
+        addTransaction({
+            title: newIncomeDesc || 'Ingreso',
+            category: 'Ingreso',
+            amount: amount
+        });
+
+        // Reset and close
+        setNewIncomeAmount('');
+        setNewIncomeDesc('');
+        setIsBalanceExpanded(false);
+    };
 
     // Calcular inversiones basado en transacciones de tipo 'Cripto' o 'Inversión'
     const investments = useMemo(() => {
@@ -133,51 +155,109 @@ export function Home() {
                         <span className="pill">Este mes</span>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Ingresos */}
-                        <GlassCard className="flex flex-col gap-3 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <SFArrowUpRight size={48} className="text-green-500" />
-                            </div>
-                            <div className="flex items-center gap-2 text-green-500 mb-1">
-                                <div className="p-2 bg-green-500/10 rounded-full">
-                                    <SFArrowUpRight size={16} />
-                                </div>
-                                <span className="text-sm font-medium">Ingresos</span>
-                            </div>
-                            <div>
-                                <span className="text-2xl font-bold tracking-tight text-white">
-                                    ${income.toLocaleString('es-CO')}
-                                </span>
-                                <p className="text-xs text-white/50 mt-1">
-                                    +12% vs mes anterior
-                                </p>
-                            </div>
-                        </GlassCard>
+                    <div className="flex flex-col gap-4">
+                        {/* Ingresos y Gastos - Expandible */}
+                        <motion.div 
+                            layout
+                            className={`flex flex-col gap-4 transition-all duration-300 ${isBalanceExpanded ? 'glass-panel p-4 rounded-[24px]' : ''}`}
+                            onClick={() => !isBalanceExpanded && setIsBalanceExpanded(true)}
+                            style={{ cursor: !isBalanceExpanded ? 'pointer' : 'default' }}
+                        >
+                            {/* Header (Resumen) */}
+                            <motion.div layout className="flex flex-col gap-4">
+                                <div className="flex items-center justify-between gap-4">
+                                    {/* Ingresos */}
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-black dark:text-white">Ingresos</span>
+                                            <SFArrowUpRight size={16} className="text-green-500" />
+                                        </div>
+                                        <span className="text-2xl font-bold tracking-tight text-green-500">
+                                            ${income.toLocaleString('es-CO')}
+                                        </span>
+                                    </div>
 
-                        {/* Gastos */}
-                        <GlassCard className="flex flex-col gap-3 relative overflow-hidden group">
-                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <SFArrowDownRight size={48} className="text-red-500" />
-                            </div>
-                            <div className="flex items-center gap-2 text-red-500 mb-1">
-                                <div className="p-2 bg-red-500/10 rounded-full">
-                                    <SFArrowDownRight size={16} />
+                                    {/* Gastos */}
+                                    <div className="flex flex-col gap-1 items-end">
+                                        <div className="flex items-center gap-2">
+                                            <SFArrowDownRight size={16} className="text-red-500" />
+                                            <span className="text-sm font-medium text-black dark:text-white">Gastos</span>
+                                        </div>
+                                        <span className="text-2xl font-bold tracking-tight text-red-500">
+                                            ${expenses.toLocaleString('es-CO')}
+                                        </span>
+                                    </div>
                                 </div>
-                                <span className="text-sm font-medium">Gastos</span>
-                            </div>
-                            <div>
-                                <span className="text-2xl font-bold tracking-tight text-white">
-                                    ${expenses.toLocaleString('es-CO')}
-                                </span>
-                                <p className="text-xs text-white/50 mt-1">
-                                    Controlado
-                                </p>
-                            </div>
-                        </GlassCard>
+
+                                {/* Porcentaje de Ganancias/Pérdidas */}
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex items-center justify-between text-xs text-gray-500">
+                                        <span>Balance</span>
+                                        <span>{income > 0 ? Math.round(((income - expenses) / income) * 100) : 0}% de margen</span>
+                                    </div>
+                                    <div className="w-full h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full bg-green-500 rounded-full"
+                                            style={{ width: `${income > 0 ? Math.min(100, Math.max(0, ((income - expenses) / income) * 100)) : 0}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            </motion.div>
+
+                            {/* Formulario de Agregar Ingreso */}
+                            <AnimatePresence>
+                                {isBalanceExpanded && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className="pt-4 flex flex-col gap-3 border-t border-gray-200 dark:border-gray-700 mt-2"
+                                    >
+                                        <h4 className="text-sm font-semibold text-black dark:text-white">Agregar Ingreso</h4>
+                                        <input
+                                            type="number"
+                                            placeholder="Monto"
+                                            value={newIncomeAmount}
+                                            onChange={(e) => setNewIncomeAmount(e.target.value)}
+                                            className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-800 border-none text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                                            autoFocus
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Descripción (opcional)"
+                                            value={newIncomeDesc}
+                                            onChange={(e) => setNewIncomeDesc(e.target.value)}
+                                            className="w-full p-3 rounded-xl bg-gray-100 dark:bg-gray-800 border-none text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                                        />
+                                        <div className="flex gap-2 mt-2">
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setIsBalanceExpanded(false);
+                                                    setNewIncomeAmount('');
+                                                    setNewIncomeDesc('');
+                                                }}
+                                                className="flex-1 py-2.5 rounded-xl bg-gray-200 dark:bg-gray-700 text-sm font-semibold text-gray-600 dark:text-gray-300"
+                                            >
+                                                Cancelar
+                                            </button>
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleSaveIncome();
+                                                }}
+                                                className="flex-1 py-2.5 rounded-xl bg-green-500 text-sm font-semibold text-white shadow-lg shadow-green-500/30"
+                                            >
+                                                Guardar
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </motion.div>
 
                         {/* Inversiones */}
-                        <GlassCard className="flex flex-col gap-3 relative overflow-hidden group">
+                        <GlassCard className="flex flex-col gap-3 relative overflow-hidden group mt-2">
                             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                                 <SFTrendingUp size={48} className="text-blue-500" />
                             </div>

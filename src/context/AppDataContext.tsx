@@ -81,9 +81,6 @@ type AppDataContextValue = {
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppDataContext.tsx:AppDataProvider:init',message:'AppDataProvider iniciando',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     
     // Inicializar con valores por defecto para evitar mostrar 0 mientras carga
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -95,9 +92,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const [income, setIncome] = useState(1100000); // Valor por defecto
     const [expenses, setExpenses] = useState(229900); // Valor por defecto
     
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppDataContext.tsx:AppDataProvider:stateInit',message:'Estados inicializados',data:{tasksCount:tasks.length,eventsCount:events.length,habitsCount:habits.length,projectsCount:projects.length,balance,income,expenses},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     const loadDataRef = useRef<(() => Promise<void>) | null>(null);
     // Rastrear cambios recientes para evitar que las suscripciones de tiempo real los sobrescriban
     const recentUpdatesRef = useRef<Map<string, { completed?: boolean; timestamp: number }>>(new Map());
@@ -1404,9 +1398,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }, [addEvent, supabase]);
 
     const updateProject = useCallback(async (id: string, updates: Partial<Omit<Project, 'id'>>) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppDataContext.tsx:1079',message:'updateProject entry',data:{id,updates,projectsCount:projects.length,availableIds:projects.map(p=>p.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         console.log('🔄 ========== INICIO updateProject ==========');
         console.log('🔄 ID:', id);
         console.log('🔄 Updates:', updates);
@@ -1420,17 +1411,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             previousProject = project;
             
             if (!project) {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppDataContext.tsx:1092',message:'updateProject project not found in state',data:{id,availableIds:prev.map(p=>p.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
                 console.error('❌ Proyecto no encontrado en estado para actualizar:', id);
                 console.error('📋 IDs disponibles:', prev.map(p => p.id));
                 return prev;
             }
             
             // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppDataContext.tsx:1098',message:'updateProject project found in state',data:{id:project.id,currentTitle:project.title,newTitle:updates.title},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
+            
             console.log('✅ Proyecto encontrado en estado:', {
                 id: project.id,
                 currentTitle: project.title,
@@ -1477,10 +1464,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                 .single();
 
             if (error) {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppDataContext.tsx:1141',message:'updateProject Supabase error',data:{id,errorCode:error.code,errorMessage:error.message,errorDetails:error.details,errorHint:error.hint,updates},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
-                
                 const errorCode = error?.code;
                 const errorMessage = error?.message || '';
                 
@@ -1514,9 +1497,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (data) {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppDataContext.tsx:1162',message:'updateProject Supabase success',data:{id:data.id,title:data.title,descriptionLength:data.description?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
                 console.log('✅ Respuesta de Supabase:', {
                     id: data.id,
                     title: data.title,
@@ -1529,9 +1509,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                     const projectIndex = prev.findIndex(p => p.id === id);
                     
                     if (projectIndex === -1) {
-                        // #region agent log
-                        fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppDataContext.tsx:1174',message:'updateProject project not found after Supabase update',data:{id,availableIds:prev.map(p=>p.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                        // #endregion
                         console.warn('⚠️ Proyecto no encontrado para actualizar con datos de Supabase:', id);
                         console.warn('📋 IDs disponibles:', prev.map(p => p.id));
                         return prev;
@@ -1561,26 +1538,16 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                     });
                     
                     // #region agent log
-                    fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppDataContext.tsx:1203',message:'updateProject state updated after Supabase',data:{id,updatedProjectTitle:updated[projectIndex]?.title,updatedProjectDescriptionLength:updated[projectIndex]?.description?.length,totalProjects:updated.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                    // #endregion
+                    
                     console.log('✅ Estado actualizado con datos de Supabase. Total proyectos:', updated.length);
                     return updated;
                 });
             } else {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppDataContext.tsx:1207',message:'updateProject Supabase returned no data',data:{id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
                 console.warn('⚠️ Supabase retornó sin datos');
             }
             
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppDataContext.tsx:1210',message:'updateProject success',data:{id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
             console.log('✅ ========== FIN updateProject (éxito) ==========');
         } catch (error) {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppDataContext.tsx:1212',message:'updateProject exception',data:{id,error:error instanceof Error?error.message:String(error),errorType:typeof error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
             console.error("❌ ========== ERROR en updateProject ==========");
             console.error("❌ Error:", error);
             console.error("❌ Tipo:", typeof error);
@@ -1674,15 +1641,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     );
 
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppDataContext.tsx:AppDataProvider:render',message:'AppDataProvider renderizando',data:{hasValue:!!value,hasChildren:!!children},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     
     try {
         return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
     } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppDataContext.tsx:AppDataProvider:error',message:'ERROR en AppDataProvider render',data:{error:error instanceof Error?error.message:String(error),stack:error instanceof Error?error.stack:undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         throw error;
     }
 }

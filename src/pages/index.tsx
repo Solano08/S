@@ -91,9 +91,6 @@ export const Projects = () => {
     }, [projects, editingProjectId]);
 
     const handleAddProject = async () => {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:53',message:'handleAddProject ENTRY',data:{editingProjectId,projectsCount:projects.length,pendingNewProject},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,C'})}).catch(()=>{});
-        // #endregion
         
         // Si ya hay un proyecto en edición, guardarlo primero
         if (editingProjectId) {
@@ -107,29 +104,17 @@ export const Projects = () => {
             progress: 0
         };
         
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:66',message:'handleAddProject BEFORE_SET_PENDING',data:{newProject},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         
         setPendingNewProject(true);
         
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:69',message:'handleAddProject BEFORE_ADD_PROJECT',data:{pendingNewProject:true},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         
         try {
             await addProject(newProject);
             
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:73',message:'handleAddProject AFTER_ADD_PROJECT',data:{projectsCount:projects.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
             
             // El formulario se abrirá automáticamente cuando el proyecto se cree
             // gracias al useEffect que detecta pendingNewProject
         } catch (error) {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:78',message:'handleAddProject ERROR',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
             console.error("❌ Error creando proyecto:", error);
             setPendingNewProject(false);
             alert(`Error al crear el proyecto: ${error instanceof Error ? error.message : 'Error desconocido'}`);
@@ -138,22 +123,13 @@ export const Projects = () => {
 
     // Efecto para abrir el editor cuando se crea un nuevo proyecto
     useEffect(() => {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:80',message:'useEffect openEditor ENTRY',data:{pendingNewProject,projectsLength:projects.length,editingProjectId,projectsIds:projects.map(p=>p.id),projectsTitles:projects.map(p=>p.title)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,C,D'})}).catch(()=>{});
-        // #endregion
         
         if (pendingNewProject && projects.length > 0) {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:83',message:'useEffect openEditor CONDITION_MET',data:{pendingNewProject,projectsLength:projects.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
             
             // Buscar el proyecto más reciente (sin título o con título vacío)
             const newProjects = projects
                 .filter(p => (!p.title || p.title === "" || p.title === "Nuevo proyecto") && (!editingProjectId || p.id !== editingProjectId));
             
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:87',message:'useEffect openEditor FILTER_RESULT',data:{newProjectsCount:newProjects.length,newProjectsIds:newProjects.map(p=>p.id),newProjectsTitles:newProjects.map(p=>p.title)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
             
             const sortedProjects = newProjects.sort((a, b) => {
                 // Ordenar por created_at si existe
@@ -169,9 +145,6 @@ export const Projects = () => {
             if (sortedProjects.length > 0) {
                 const newProject = sortedProjects[0];
                 
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:100',message:'useEffect openEditor SETTING_EDITING_ID',data:{newProjectId:newProject.id,newProjectTitle:newProject.title,editingProjectIdBefore:editingProjectId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                // #endregion
                 
                 setEditingProjectId(newProject.id);
                 setProjectTitle(newProject.title || "");
@@ -182,13 +155,7 @@ export const Projects = () => {
                 setProjectProgress(newProject.progress);
                 setPendingNewProject(false);
                 
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:107',message:'useEffect openEditor AFTER_SET',data:{editingProjectIdAfter:newProject.id,pendingNewProjectAfter:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                // #endregion
             } else {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:110',message:'useEffect openEditor NO_PROJECTS_FOUND',data:{projectsCount:projects.length,allProjectsTitles:projects.map(p=>p.title),allProjectsIds:projects.map(p=>p.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
             }
         }
     }, [projects, pendingNewProject, editingProjectId]);
@@ -196,15 +163,9 @@ export const Projects = () => {
     // Efecto para actualizar editingProjectId si el ID del proyecto cambió (después de guardar en Supabase)
     useEffect(() => {
         if (editingProjectId && editingProjectId.startsWith('project-')) {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:94',message:'useEffect ID sync check',data:{editingProjectId,projectTitle,availableProjects:projects.map(p=>({id:p.id,title:p.title}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
             // Si estamos editando un proyecto con ID temporal, buscar si hay uno con ID real
             const projectWithTempId = projects.find(p => p.id === editingProjectId);
             if (!projectWithTempId) {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:98',message:'useEffect temp ID not found, searching',data:{editingProjectId,projectTitle,availableProjects:projects.map(p=>({id:p.id,title:p.title}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
                 // El proyecto con ID temporal ya no existe, buscar el más reciente
                 // Buscar por título o por ser el más reciente creado
                 const recentProject = projects
@@ -228,9 +189,6 @@ export const Projects = () => {
                     })[0];
                 
                 if (recentProject && recentProject.id !== editingProjectId) {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:120',message:'useEffect updating ID from temp to real',data:{oldId:editingProjectId,newId:recentProject.id,title:recentProject.title},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                    // #endregion
                     console.log('🔄 Actualizando editingProjectId de temporal a real:', {
                         oldId: editingProjectId,
                         newId: recentProject.id,
@@ -314,52 +272,31 @@ export const Projects = () => {
             projectsIds: projects.map(p => p.id)
         });
         
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:246',message:'handleSaveProject ENTRY',data:{isSaving,editingProjectId,projectTitle,projectContentLength:projectContent.length,projectsCount:projects.length,projectsIds:projects.map(p=>p.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,D'})}).catch(()=>{});
-        // #endregion
         
         if (isSaving) {
             console.warn('⚠️ [handleSaveProject] Ya se está guardando, ignorando llamada duplicada');
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:249',message:'handleSaveProject BLOCKED_BY_IS_SAVING',data:{isSaving},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-            // #endregion
             return;
         }
 
         if (!editingProjectId) {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:254',message:'handleSaveProject NO_EDITING_ID',data:{editingProjectId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
             alert('No hay proyecto seleccionado para guardar');
             return;
         }
 
         setIsSaving(true);
         
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:260',message:'handleSaveProject SET_IS_SAVING_TRUE',data:{editingProjectId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
 
         const titleToSave = projectTitle.trim() || "Sin título";
         const descriptionToSave = projectContent.trim();
         
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:265',message:'handleSaveProject PREPARED_DATA',data:{titleToSave,descriptionToSaveLength:descriptionToSave.length,editingProjectId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
 
         // Buscar el proyecto - primero por ID, luego por título si es un ID temporal
         let existingProject = projects.find(p => p.id === editingProjectId);
         let projectIdToUse = editingProjectId;
         
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:271',message:'handleSaveProject PROJECT_SEARCH_BY_ID',data:{editingProjectId,found:!!existingProject,projectIdToUse,allProjectsIds:projects.map(p=>p.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         
         // Si no encontramos el proyecto con el ID actual, buscar el más reciente
         if (!existingProject) {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:276',message:'handleSaveProject PROJECT_NOT_FOUND_SEARCHING_BY_TITLE',data:{editingProjectId,titleToSave,projectsCount:projects.length,allProjectsTitles:projects.map(p=>p.title)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
             
             const projectByTitle = projects
                 .filter(p => {
@@ -377,33 +314,21 @@ export const Projects = () => {
                     return bTime - aTime;
                 })[0];
             
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:293',message:'handleSaveProject PROJECT_SEARCH_BY_TITLE_RESULT',data:{foundByTitle:!!projectByTitle,projectByTitleId:projectByTitle?.id,projectByTitleTitle:projectByTitle?.title},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
             
             if (projectByTitle) {
                 existingProject = projectByTitle;
                 projectIdToUse = projectByTitle.id;
                 setEditingProjectId(projectByTitle.id);
                 
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:299',message:'handleSaveProject UPDATED_EDITING_ID',data:{oldId:editingProjectId,newId:projectIdToUse},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                // #endregion
             }
         }
         
         if (!existingProject) {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:305',message:'handleSaveProject PROJECT_NOT_FOUND_ERROR',data:{editingProjectId,projectIdToUse,projectsCount:projects.length,allProjectsIds:projects.map(p=>p.id),allProjectsTitles:projects.map(p=>p.title)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
             setIsSaving(false);
             alert('Error: El proyecto no se encontró. Por favor, intenta de nuevo.');
             return;
         }
 
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:312',message:'handleSaveProject BEFORE_UPDATE_PROJECT',data:{projectIdToUse,titleToSave,descriptionToSaveLength:descriptionToSave.length,existingProjectId:existingProject.id,existingProjectTitle:existingProject.title},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
 
         // Cerrar el editor INMEDIATAMENTE para feedback instantáneo
         // El guardado continuará en segundo plano
@@ -432,14 +357,8 @@ export const Projects = () => {
                 });
                 
                 console.log('✅ [handleSaveProject] Proyecto guardado exitosamente en segundo plano');
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:352',message:'handleSaveProject UPDATE_PROJECT_SUCCESS_BACKGROUND',data:{projectIdToUse,titleToSave},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                // #endregion
             } catch (error: unknown) {
                 console.error('❌ [handleSaveProject] Error al guardar proyecto en segundo plano:', error);
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:358',message:'handleSaveProject UPDATE_PROJECT_ERROR_BACKGROUND',data:{projectIdToUse,error:error instanceof Error?error.message:String(error),errorType:typeof error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-                // #endregion
                 const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
                 // Mostrar error pero sin volver a abrir el formulario
                 alert(`Error al guardar el proyecto: ${errorMessage}`);
@@ -814,20 +733,8 @@ export const Projects = () => {
                 )}
 
                 {/* Vista de edición (bloc de notas) */}
-                {/* #region agent log */}
-                {(() => {
-                    fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:435',message:'RENDER_CHECK_FORM',data:{editingProjectId,willRenderForm:!!editingProjectId,projectTitle,projectContentLength:projectContent.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-                    return null;
-                })()}
-                {/* #endregion */}
                 {editingProjectId && (
                     <>
-                        {/* #region agent log */}
-                        {(() => {
-                            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:440',message:'RENDER_FORM_VISIBLE',data:{editingProjectId,projectTitle,projectContentLength:projectContent.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-                            return null;
-                        })()}
-                        {/* #endregion */}
                         <section className="app-section" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <div className="section-title">
                             <button
@@ -2060,23 +1967,12 @@ export const Calendar = () => {
 
     // Calcular fecha de mañana
     const tomorrowDate = useMemo(() => {
-        // #region agent log
-        try {
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:362',message:'Calculating tomorrowDate',data:{todayValid:today instanceof Date},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        } catch(e) {}
-        // #endregion
         try {
             const tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
             const result = formatDateLocal(tomorrow);
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:366',message:'tomorrowDate calculated',data:{result,tomorrowDay:tomorrow.getDate(),todayDay:today.getDate()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
             return result;
         } catch (error) {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:372',message:'Error calculating tomorrowDate',data:{error:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
             const fallback = new Date();
             fallback.setDate(fallback.getDate() + 1);
             return formatDateLocal(fallback);
@@ -2148,11 +2044,6 @@ export const Calendar = () => {
     
     // Determinar el estado del progreso: 'today', 'tomorrow', 'general'
     const progressState = useMemo(() => {
-        // #region agent log
-        try {
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:457',message:'progressState useMemo start',data:{totalTodayCount,pendingTodayCount,eventsCount,pendingTasksLength:pendingTasks?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        } catch(e) {}
-        // #endregion
         try {
             // Solo contar tareas, no eventos
             const totalToday = totalTodayCount + completedTodayCount;
@@ -2176,17 +2067,11 @@ export const Calendar = () => {
                         }
                     }
                 } catch (error) {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:420',message:'Error in progressState forEach',data:{error:String(error),taskId:task?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                    // #endregion
                 }
             });
             
             // Si hay tareas para fechas futuras (más allá de mañana), mostrar progreso general
             if (futureDates.size > 0 || uniqueDates.size > 1) {
-                // #region agent log
-                fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:436',message:'progressState: general',data:{uniqueDatesSize:uniqueDates.size,futureDatesSize:futureDates.size},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                // #endregion
                 return 'general';
             }
             
@@ -2195,9 +2080,6 @@ export const Calendar = () => {
                 // Verificar si hay tareas para mañana
                 const hasTomorrowTasks = tomorrowTasks.length > 0;
                 if (hasTomorrowTasks) {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:430',message:'progressState: tomorrow (no tasks today)',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                    // #endregion
                     return 'tomorrow';
                 }
             }
@@ -2209,9 +2091,6 @@ export const Calendar = () => {
                 
                 // Si solo hay tareas para mañana
                 if (hasTomorrowTasks && uniqueDates.size === 1 && uniqueDates.has(tomorrowDate)) {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:430',message:'progressState: tomorrow',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                    // #endregion
                     return 'tomorrow';
                 }
                 // Si hay tareas para mañana (aunque no haya pendientes, puede haber completadas)
@@ -2222,14 +2101,8 @@ export const Calendar = () => {
             }
             
             // Por defecto, mostrar progreso de hoy
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:516',message:'progressState: today (default)',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
             return 'today';
         } catch (error) {
-            // #region agent log
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:520',message:'Error in progressState',data:{error:String(error),errorStack:error instanceof Error ? error.stack : 'no stack'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-            // #endregion
             return 'today';
         }
     }, [totalTodayCount, completedTodayCount, pendingTodayCount, pendingTasks, extractTaskDate, todayDateString, tomorrowDate, tomorrowTasks]);
@@ -2350,13 +2223,6 @@ export const Calendar = () => {
         }
     }, [selectedMonth, today]);
     const calendarDays = useMemo(() => {
-        // #region agent log
-        try {
-            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:1211',message:'calendarDays useMemo start',data:{hasSelectedMonth:!!selectedMonth,hasToday:!!today,todayValid:today instanceof Date},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        } catch (error) {
-            console.error('Error logging calendarDays start:', error);
-        }
-        // #endregion
         try {
             const dateToUse = selectedMonth ?? today;
             if (!dateToUse || !(dateToUse instanceof Date) || isNaN(dateToUse.getTime())) {
@@ -3169,14 +3035,6 @@ export const Calendar = () => {
                             </span>
                         </div>
                     </div>
-                    {/* #region agent log */}
-                    {(() => {
-                        try {
-                            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835ab84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:1487',message:'Rendering progress card',data:{progressState:progressData.state,allCompleted:progressData.allCompleted,hasProgressData:!!progressData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-                        } catch(e) {}
-                        return null;
-                    })()}
-                    {/* #endregion */}
                     
                     {/* Calcular si todas las tareas de hoy están completadas (solo tareas, no eventos) */}
                     {(() => {
@@ -3389,13 +3247,6 @@ export const Calendar = () => {
                                             !taskDate && !selectedDate && "task-input-placeholder"
                                         )}
                                         onClick={() => {
-                                            // #region agent log
-                                            try {
-                                                fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:2454',message:'Opening task date picker',data:{hasCalendarDays:!!calendarDays,hasCalendarWeekDays:!!calendarWeekDays,hasCalendarMonths:!!calendarMonths,hasMonthLabel:!!monthLabel,calendarView},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                                            } catch (error) {
-                                                console.error('Error logging date picker open:', error);
-                                            }
-                                            // #endregion
                                             setPickerMode("date");
                                         }}
                                     >
@@ -4299,22 +4150,12 @@ export const Calendar = () => {
                                                             "calendar-day-selected"
                                                     )}
                                                     onClick={() => {
-                                                        // #region agent log
-                                                        try {
-                                                            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:3342',message:'Calendar day clicked',data:{dayNumber:day.dayNumber,date:day.date?.toISOString(),hasHandleSelectDate:typeof handleSelectDate === 'function'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                                                        } catch (error) {
-                                                            console.error('Error logging day click:', error);
-                                                        }
-                                                        // #endregion
                                                         try {
                                                             if (day.date && handleSelectDate) {
                                                                 handleSelectDate(day.date);
                                                                 setPickerMode(null);
                                                             }
                                                         } catch (error) {
-                                                            // #region agent log
-                                                            fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.tsx:3348',message:'Error in handleSelectDate',data:{error:error instanceof Error?error.message:String(error),dayNumber:day.dayNumber},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                                                            // #endregion
                                                             console.error('Error en handleSelectDate:', error);
                                                         }
                                                     }}
