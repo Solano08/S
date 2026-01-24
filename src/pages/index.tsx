@@ -10,6 +10,7 @@ import {
     SFArrowDownRight,
     SFCalendar,
     SFPlus,
+    SFMinus,
     SFTrash
 } from '../components/ui/SFIcons';
 import { QuickActionsMenu } from '../components/ui/QuickActionsMenu';
@@ -1293,35 +1294,78 @@ export const Finances = () => {
 
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '4px 0' }}>
                                     <button
-                                        onClick={() => setBalanceCalculatorValue(prev => Math.max(0, prev - (currency === 'USD' ? 10 : 100000)))}
+                                        onClick={() => setBalanceCalculatorValue(prev => Math.max(0, prev - (currency === 'USD' ? 20 : 200000)))}
                                         style={{
                                             width: '50px',
                                             height: '50px',
                                             borderRadius: '50%',
-                                            border: '1px solid var(--glass-border)',
-                                            background: 'var(--glass-bg-base)',
+                                            border: 'none',
+                                            background: 'transparent',
                                             fontSize: '24px',
                                             color: 'var(--text-primary)',
                                             cursor: 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: 'center'
+                                            justifyContent: 'center',
+                                            transition: 'all 0.1s'
                                         }}
+                                        className="calculator-minus-btn"
                                     >
-                                        -
+                                        <SFMinus size={24} />
                                     </button>
 
-                                    <div style={{ flex: 1, textAlign: 'center' }}>
-                                        <span style={{ fontSize: '36px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-1px' }}>
-                                            {currency === 'USD' ? '$' : ''}
-                                            {currency === 'USD' 
-                                                ? balanceCalculatorValue.toLocaleString('en-US')
-                                                : (balanceCalculatorValue / 1000000).toLocaleString('es-CO') + 'M'
-                                            }
-                                        </span>
-                                        <p style={{ margin: '2px 0 0', fontSize: '14px', color: 'var(--text-tertiary)' }}>
-                                            {currency === 'USD' ? 'Dólares' : `$${balanceCalculatorValue.toLocaleString('es-CO')}`}
-                                        </p>
+                                    <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
+                                        {isEditingBalance ? (
+                                            <input
+                                                type="number"
+                                                value={tempBalanceInput}
+                                                onChange={(e) => setTempBalanceInput(e.target.value)}
+                                                onBlur={() => {
+                                                    const val = parseFloat(tempBalanceInput);
+                                                    if (!isNaN(val) && val >= 0) {
+                                                        setBalanceCalculatorValue(val);
+                                                    }
+                                                    setIsEditingBalance(false);
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        const val = parseFloat(tempBalanceInput);
+                                                        if (!isNaN(val) && val >= 0) {
+                                                            setBalanceCalculatorValue(val);
+                                                        }
+                                                        setIsEditingBalance(false);
+                                                    }
+                                                }}
+                                                autoFocus
+                                                style={{
+                                                    fontSize: '36px',
+                                                    fontWeight: '700',
+                                                    color: 'var(--text-primary)',
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    textAlign: 'center',
+                                                    width: '100%',
+                                                    outline: 'none',
+                                                    letterSpacing: '-1px'
+                                                }}
+                                            />
+                                        ) : (
+                                            <div 
+                                                onClick={() => {
+                                                    setTempBalanceInput(balanceCalculatorValue.toString());
+                                                    setIsEditingBalance(true);
+                                                }}
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                <span style={{ fontSize: '36px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-1px' }}>
+                                                    {currency === 'USD' ? '$' : ''}
+                                                    {balanceCalculatorValue.toLocaleString(currency === 'USD' ? 'en-US' : 'es-CO')}
+                                                </span>
+                                                <p style={{ margin: '2px 0 0', fontSize: '14px', color: 'var(--text-tertiary)' }}>
+                                                    {currency === 'USD' ? 'Dólares' : 'Pesos Colombianos'}
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <button
@@ -1334,17 +1378,18 @@ export const Finances = () => {
                                             height: '50px',
                                             borderRadius: '50%',
                                             border: 'none',
-                                            background: 'var(--ios-blue)',
+                                            background: 'transparent',
                                             fontSize: '24px',
-                                            color: '#fff',
+                                            color: 'var(--ios-blue)',
                                             cursor: 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            boxShadow: '0 4px 12px rgba(41, 151, 255, 0.3)'
+                                            transition: 'all 0.1s'
                                         }}
+                                        className="calculator-plus-btn"
                                     >
-                                        +
+                                        <SFPlus size={24} />
                                     </button>
                                 </div>
 
