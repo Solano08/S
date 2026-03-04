@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "cursor-browser-extension": {
+      "disabled": true
+    }
+  }
+}

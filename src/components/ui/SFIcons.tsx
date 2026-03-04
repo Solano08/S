@@ -171,6 +171,20 @@ export function SFStar(props: IconProps) {
     );
 }
 
+export function SFStarFilled(props: IconProps) {
+    return (
+        <svg
+            width={props.size ?? 20}
+            height={props.size ?? 20}
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className={props.className}
+        >
+            <path d="M12 3l2.6 5.3L20 9l-4 3.9L17 19l-5-2.8L7 19l1-6.1L4 9l5.4-.7L12 3z" />
+        </svg>
+    );
+}
+
 export function SFTrash(props: IconProps) {
     return (
         <IconBase {...props}>
@@ -179,6 +193,15 @@ export function SFTrash(props: IconProps) {
             <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
             <path d="M10 11v6" />
             <path d="M14 11v6" />
+        </IconBase>
+    );
+}
+
+export function SFLock(props: IconProps) {
+    return (
+        <IconBase {...props}>
+            <rect x="5" y="11" width="14" height="10" rx="2" />
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
         </IconBase>
     );
 }

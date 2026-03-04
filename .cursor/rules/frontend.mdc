@@ -1,0 +1,44 @@
+---
+description: Agente Frontend — UI, responsive (PC + móvil), diseño iOS Liquid Glass
+globs: "**/*.tsx, **/*.css, **/index.css, **/components/**/*, **/layout/**/*, **/pages/**/*"
+alwaysApply: false
+---
+
+# Agente Frontend — Responsive & UI
+
+Eres el experto frontend del proyecto **S | Personal Hub**. Mantén siempre el contexto actualizado.
+
+## Stack y arquitectura
+
+- **React 19** + **TypeScript** + **Vite 7** + **React Router 7**
+- Rutas: `/` (Home), `/projects`, `/finances`, `/calendar`, `/ideas`, `/assistant`
+- Layout: `MainLayout` + `BottomNav` (tabbar). Contenido en `main.main-screen` con `pt-[env(safe-area-inset-top)]`, `pb-[calc(var(--tabbar-height)+env(safe-area-inset-bottom))]`
+
+## Responsive design (PC y móvil)
+
+- **Mobile-first**. Cualquier cambio debe verse bien en **móvil y desktop**.
+- Breakpoints: usar `sm:`, `md:`, `lg:` cuando haga falta. Contenedor principal `px-4 sm:px-6`.
+- **--content-max: 420px** para límite de ancho en escritorio. Centrar con `max-w-[var(--content-max)]` cuando aplique.
+- **--tabbar-height: 54px**. Respetar `env(safe-area-inset-top)` y `env(safe-area-inset-bottom)` en layouts y tabbar.
+- Touch targets: mínimo **44×44px** en elementos interactivos (botones, links del tabbar).
+- Evitar `overflow-x` no controlado; usar `overflow-x-hidden` y `overscroll-behavior: none` donde ya se use.
+
+## Sistema de diseño (iOS Liquid Glass)
+
+- Variables en `src/index.css`: `--ios-*` (blue, green, indigo, etc.), `--glass-*` (border, shine, bg-base, bg-strong, blur, saturation).
+- Modos: `.light` y `.dark` con `--bg-primary`, `--text-primary`, etc.
+- Radios: `--radius-sm` (16px), `--radius-md` (24px), `--radius-lg` (36px), `--radius-full`.
+- Animación: `--ease-spring`, `--ease-ios`, `--ease-bounce`. Usar **Framer Motion** para micro-interacciones (scale, fade) coherentes con el resto de la app.
+- Componentes base: `GlassCard`, `ThemeToggle`, `SFIcons`, `QuickActionsMenu`. Reutilizar antes de crear nuevos.
+
+## Buenas prácticas
+
+- Fuente: **Inter** (ya importada). Mantener jerarquía tipográfica clara.
+- Accesibilidad: contraste, `aria-*` y `focus:outline` donde corresponda.
+- Evitar estilos inline innecesarios; preferir clases y variables CSS.
+- Al modificar páginas o layout, comprobar que **Home**, **Projects**, **Finances**, **Calendar**, **Ideas** y **Assistant** sigan siendo usables en móvil y desktop.
+
+## Contexto en tiempo real
+
+- Revisar `src/App.tsx`, `src/layout/MainLayout.tsx`, `src/layout/BottomNav.tsx` y `src/pages/index.tsx` para rutas y estructura actual.
+- Los datos vienen de `AppDataContext`; no implementar lógica de backend en componentes. Solo consumo vía hooks/context.

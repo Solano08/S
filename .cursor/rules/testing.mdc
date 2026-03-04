@@ -1,0 +1,50 @@
+---
+description: Agente Testing — cursor-ide-browser, E2E, verificación responsive y flujos
+globs: "**/*.test.*, **/*.spec.*, **/*.e2e.*, **/cypress/**/*, **/e2e/**/*, **/playwright*/**/*"
+alwaysApply: false
+---
+
+# Agente Testing — Navegador y verificación
+
+Eres el experto de testing del proyecto **S | Personal Hub**. Usas **cursor-ide-browser** (MCP) para probar en navegador. Mantén siempre el contexto actualizado.
+
+## Herramienta: cursor-ide-browser
+
+- **Único MCP de navegador** del proyecto. `cursor-browser-extension` está desactivado.
+- Usar para: verificar UI, flujos clave, responsive (móvil/desktop), PWA install/update.
+
+## Flujo obligatorio (lock/unlock)
+
+1. **Navegar**: `browser_navigate` a la URL (ej. `http://localhost:5173`).
+2. **Lock**: `browser_lock` **después** de tener pestaña abierta. Si ya hay pestaña, hacer `browser_lock` primero.
+3. **Interactuar**: `browser_snapshot` para estructura y refs → luego `browser_click`, `browser_type`, `browser_fill`, etc.
+4. **Unlock**: `browser_unlock` solo cuando termines **todas** las operaciones de ese turno.
+
+Orden correcto: `browser_navigate` → `browser_lock` → (interacciones) → `browser_unlock`.
+
+## Estrategia de espera
+
+- **Esperas cortas e incrementales** (1–3 s) con `browser_snapshot` entre medias, en lugar de una espera larga fija.
+- Ejemplo: esperar 2s → snapshot → si no está listo, esperar 2s más → snapshot de nuevo.
+
+## Antes de interactuar
+
+- `browser_tabs` (list) para ver pestañas y URLs.
+- `browser_snapshot` para obtener estructura y refs de elementos antes de click/type/hover.
+
+## Qué verificar
+
+- **Responsive**: probar viewport móvil y desktop; tabbar, safe areas, scroll, sin overflow horizontal indeseado.
+- **Flujos**: navegación entre Home, Projects, Finances, Calendar, Ideas, Assistant; formularios y acciones que modifiquen datos.
+- **PWA**: instalación (install prompt), funcionamiento offline básico, actualización tras deploy.
+- **Tema**: cambio light/dark con `ThemeToggle`.
+
+## Limitaciones
+
+- Diálogos nativos (alert/confirm/prompt): no bloquean; `confirm()` por defecto acepta. Usar `browser_handle_dialog` antes de la acción si necesitas otro comportamiento.
+- Iframes: no accesibles; solo elementos fuera de iframes.
+- `browser_type`: añade texto. `browser_fill`: reemplaza. Para scroll anidado, `browser_scroll` con `scrollIntoView: true` si el elemento no es visible.
+
+## Contexto en tiempo real
+
+- Servidor dev: `npm run dev` (puerto 5173). Build: `npm run build`; preview con `npm run preview` para probar producción/PWA.

@@ -1,0 +1,37 @@
+---
+description: Agente PWA — vite-plugin-pwa, Workbox, manifest, service worker, offline
+globs: "**/vite.config*.ts, **/public/manifest*.json, **/public/sw*.js, **/public/*.png, **/registerSW*, **/serviceWorker*, **/usePWA*, **/PWAInstaller*"
+alwaysApply: false
+---
+
+# Agente PWA — Progressive Web App
+
+Eres el experto PWA del proyecto **S | Personal Hub**. Mantén siempre el contexto actualizado.
+
+## Stack y arquitectura
+
+- **vite-plugin-pwa** en `vite.config.ts`. **Workbox** para el service worker.
+- Manifest: `public/manifest.json`. Iconos en `public/` (pwa-192, pwa-512, apple-touch-icon, favicon).
+- Registro SW: `src/utils/serviceWorkerRegistration.ts`. Hook `usePWA` y componente `PWAInstaller`.
+- Build: SW y workbox en `dev-dist/` (registerSW, sw, workbox-*). Fallback: `public/sw-fallback.js`.
+
+## Configuración actual (vite-plugin-pwa)
+
+- `registerType: 'autoUpdate'`, `injectRegister: null`.
+- Manifest: `name: 'S | Personal Hub'`, `short_name: 'S'`, `display: 'standalone'`, `orientation: 'portrait'`, `scope: '/'`, `start_url: '/?v=5'`.
+- Theme/background: `#f2f2f7`. Iconos 192, 512 (any + maskable), apple-touch-icon.
+- Workbox: `globPatterns: ['index.html']`, `skipWaiting`, `clientsClaim`, `cleanupOutdatedCaches`, `navigateFallback: '/index.html'`.
+- Runtime caching: **NetworkFirst** para `*.supabase.co` y para `https` genérico (timeout 10s, cache 24h donde aplique).
+- `devOptions.enabled: false` en desarrollo.
+
+## Buenas prácticas
+
+- No romper **offline**: Supabase ya en runtime cache; evitar quitar caché de recursos críticos sin sustitución.
+- Iconos: usar `scripts/generate-icons.js` y `verify-icons.js`; mantener consistencia con `icon-original.png` y manifest.
+- Al cambiar `vite.config` PWA o manifest: comprobar `npm run build` y que la app instalable siga funcionando (install prompt, actualizaciones).
+- Documentación: `PWA-SETUP.md`, `PWA-TROUBLESHOOTING.md`, `PWA-ICON-FIX.md` para procedimientos y troubleshooting.
+
+## Contexto en tiempo real
+
+- Revisar `vite.config.ts` (bloque `VitePWA`), `public/manifest.json` y `public/` para iconos y SW actuales.
+- Revisar `PWAInstaller`, `usePWA` y `serviceWorkerRegistration` para flujo de instalación y actualización.

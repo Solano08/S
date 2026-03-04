@@ -1,0 +1,11 @@
+---
+description: Contexto global del proyecto — agentes, arquitectura, fuentes de verdad
+alwaysApply: true
+---
+
+# Contexto del proyecto — S | Personal Hub
+
+- **Agentes por rol**: Frontend, Backend, PWA, Testing, **Terminal**. Reglas en `.cursor/rules/*.mdc`; resumen en `AGENTS.md`.
+- **MCP de navegador**: solo **cursor-ide-browser**. `cursor-browser-extension` desactivado (`.cursor/mcp.json`).
+- **Fuentes de verdad**: `src/App.tsx` (rutas), `src/context/AppDataContext.tsx` (datos), `src/lib/supabase.ts` (backend), `vite.config.ts` (PWA), `supabase/schema.sql` y `add-*.sql` (esquema).
+- Mantén el contexto actualizado: antes de cambios estructurales, revisa los archivos anteriores y las reglas del agente correspondiente.

@@ -2210,6 +2210,64 @@ button:active, a:active, [role="button"]:active {
   transition: transform 0.08s var(--ease-ios-in);
 }
 
+.faceid-lock-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translateY(0);
+  transition: transform 0.18s var(--ease-ios-out),
+              color 0.18s var(--ease-ios-out),
+              text-shadow 0.18s var(--ease-ios-out),
+              filter 0.18s var(--ease-ios-out);
+}
+
+.faceid-lock-button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0));
+  transition: transform 0.18s var(--ease-ios-out),
+              filter 0.18s var(--ease-ios-out);
+}
+
+.faceid-lock-button:hover {
+  color: var(--text-primary);
+  text-shadow: 0 0 10px rgba(41, 151, 255, 0.45);
+}
+
+.faceid-lock-button:hover .faceid-lock-button-icon {
+  transform: scale(1.08);
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
+}
+
+.faceid-lock-button:active {
+  transform: scale(0.9) translateY(1px);
+  transition: transform 0.08s var(--ease-ios-in);
+}
+
+.light .faceid-lock-button {
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.08);
+}
+
+.dark .faceid-lock-button {
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.35);
+}
+
+.events-pin-input::placeholder {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.2px;
+  opacity: 0.75;
+}
+
 .event-form-card {
   position: relative;
   background: var(--glass-bg-base);

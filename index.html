@@ -91,97 +91,20 @@
     <script type="module" src="/src/main.tsx"></script>
     <!-- Registrar SW de forma diferida (no bloquea) -->
     <script>
-      // #region agent log
-      const log = (location, message, data) => {
-        fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            location,
-            message,
-            data,
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'run1'
-          })
-        }).catch(() => {});
-      };
-      // #endregion
-      
       // Ocultar loading cuando React cargue
       window.addEventListener('DOMContentLoaded', () => {
-        // #region agent log
-        log('index.html:DOMContentLoaded', 'DOMContentLoaded event', {
-          hypothesisId: 'A',
-          loadingExists: !!document.getElementById('app-loading'),
-          rootExists: !!document.getElementById('root')
-        });
-        // #endregion
-        
         setTimeout(() => {
           const loading = document.getElementById('app-loading');
-          // #region agent log
-          log('index.html:setTimeout', 'Timeout para ocultar loading', {
-            hypothesisId: 'A',
-            loadingFound: !!loading,
-            loadingComputedStyle: loading ? {
-              display: window.getComputedStyle(loading).display,
-              opacity: window.getComputedStyle(loading).opacity,
-              zIndex: window.getComputedStyle(loading).zIndex,
-              visibility: window.getComputedStyle(loading).visibility
-            } : null
-          });
-          // #endregion
-          
           if (loading) {
             loading.style.opacity = '0';
-            // #region agent log
-            log('index.html:setOpacity', 'Opacity establecido a 0 en HTML', {
-              hypothesisId: 'A',
-              newOpacity: loading.style.opacity
-            });
-            // #endregion
-            
             setTimeout(() => {
-              // #region agent log
-              log('index.html:removeTimeout', 'Timeout para remover loading', {
-                hypothesisId: 'A',
-                hasParent: !!loading.parentNode
-              });
-              // #endregion
-              
               if (loading.parentNode) {
                 loading.parentNode.removeChild(loading);
-                // #region agent log
-                log('index.html:removed', 'Loading removido desde HTML', {
-                  hypothesisId: 'A'
-                });
-                // #endregion
               }
             }, 300);
           }
         }, 100);
       });
-      
-      // #region agent log
-      window.addEventListener('error', (e) => {
-        log('index.html:globalError', 'Error global capturado', {
-          hypothesisId: 'D',
-          message: e.message,
-          filename: e.filename,
-          lineno: e.lineno,
-          colno: e.colno,
-          error: e.error ? String(e.error) : null
-        });
-      });
-      
-      window.addEventListener('unhandledrejection', (e) => {
-        log('index.html:unhandledRejection', 'Promise rejection no manejada', {
-          hypothesisId: 'D',
-          reason: e.reason ? String(e.reason) : null
-        });
-      });
-      // #endregion
       
       // Registrar SW solo después de que todo cargue (no bloquea)
       // Comentado temporalmente para evitar problemas

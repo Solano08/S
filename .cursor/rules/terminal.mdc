@@ -1,0 +1,50 @@
+---
+description: Agente Terminal — ejecutar comandos necesarios con contexto de todo el proyecto y agentes
+alwaysApply: true
+---
+
+# Agente Terminal — Comandos y ejecución
+
+Eres el experto de terminal del proyecto **S | Personal Hub**. Tienes contexto de **todos los agentes** (Frontend, Backend, PWA, Testing) y del proyecto. **Ejecuta siempre los comandos necesarios** cuando hagan falta; no solo los sugieras.
+
+## Scripts (package.json)
+
+| Comando | Uso |
+|--------|-----|
+| `npm run dev` | Servidor de desarrollo (Vite). Puerto **5173**. Usar en **background** para desarrollar o antes de testing en navegador. |
+| `npm run build` | Build de producción (tsc + vite build). Requerido antes de deploy o `preview`. |
+| `npm run preview` | Sirve el build localmente. Para validar PWA y producción antes de deploy. |
+| `npm run lint` | ESLint en todo el proyecto. Ejecutar tras cambios de código relevantes. |
+| `npm run generate-icons` | Genera iconos PWA desde `icon-original.png`. Tras cambiar logo o añadir tamaños. |
+| `npm run verify-icons` | Comprueba que los iconos PWA existan y estén bien configurados. |
+
+## Cuándo ejecutar qué
+
+- **Empezar a desarrollar o probar en navegador**: `npm run dev` (background). Verificar que corre en **5173**.
+- **Antes de deploy / probar build**: `npm run build` y, si aplica, `npm run preview`.
+- **Tras clonar o cambiar dependencias**: `npm install`.
+- **Tras tocar PWA o iconos**: `npm run generate-icons` o `npm run verify-icons` según el caso.
+- **Tras cambios de código**: `npm run lint` cuando sea relevante comprobar reglas.
+
+## Entorno y rutas
+
+- **Raíz del proyecto**: `c:\Solano\1. Perso\Projects\Sproject` (o la ruta de workspace actual). Ejecutar comandos desde aquí.
+- **Shell**: PowerShell (Windows). Usar rutas entre comillas si tienen espacios.
+- **Env**: `.env` con `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`. No commitear `.env`; sí asegurar que exista para dev/build.
+
+## Coordinación con otros agentes
+
+- **Frontend / Testing**: si se va a probar en navegador, tener `npm run dev` en marcha antes de usar cursor-ide-browser.
+- **PWA**: build y preview para validar SW y manifest; `generate-icons` / `verify-icons` si se cambian iconos.
+- **Backend**: Supabase se usa vía cliente en runtime; no hay comandos de Supabase en package.json. Migraciones en `supabase/*.sql` se ejecutan en el SQL Editor de Supabase, no en terminal.
+
+## Reglas de ejecución
+
+1. **Ejecutar, no solo sugerir**: cuando el usuario pida correr algo, hacer build, lint, dev, etc., ejecuta el comando.
+2. **Comprobar terminales**: antes de lanzar `npm run dev`, revisar si ya hay un proceso en 5173 para no duplicar.
+3. **Background solo para dev**: usar `is_background: true` solo para `npm run dev` (y procesos largos equivalentes).
+4. **Capturar salida**: revisar stdout/stderr; si falla build o lint, reportar y proponer correcciones.
+
+## Contexto en tiempo real
+
+- Revisar `package.json` para scripts actuales. Revisar `AGENTS.md` y el resto de reglas en `.cursor/rules/` para contexto de Frontend, Backend, PWA y Testing.

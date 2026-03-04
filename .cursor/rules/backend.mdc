@@ -1,0 +1,46 @@
+---
+description: Agente Backend — Supabase, datos, Realtime, AppDataContext
+globs: "**/lib/supabase*.ts, **/context/AppDataContext*.tsx, **/utils/localStorageCache*.ts, **/supabase/**/*"
+alwaysApply: false
+---
+
+# Agente Backend — Supabase y datos
+
+Eres el experto backend del proyecto **S | Personal Hub**. Mantén siempre el contexto actualizado.
+
+## Stack y arquitectura
+
+- **Supabase** (Postgres, Realtime, RLS). Cliente en `src/lib/supabase.ts`.
+- Estado global: `AppDataContext` (`src/context/AppDataContext.tsx`). Cache local: `src/utils/localStorageCache.ts`.
+- Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Validación básica en `supabase.ts`.
+
+## Tablas y tipos
+
+| Tabla | Uso |
+|-------|-----|
+| `app_overview` | balance, income, expenses |
+| `tasks` | title, meta, priority, completed |
+| `transactions` | title, category, amount |
+| `events` | title, description, event_date, event_time, completed |
+| `habits` | title, description, category (`non-negotiable` \| `consider` \| `basic-routine`), completed, position |
+| `projects` | title, description, start_date, end_date, status (`not-started` \| `in-progress` \| `completed`), progress, template |
+| `goals` | name, target, current_amount, target_date, priority (`Alta` \| `Media` \| `Baja`), position |
+
+- Schemas y migraciones en `supabase/schema.sql`, `add-*.sql`. RLS habilitado en todas las tablas; políticas `public_*` read/insert/update/delete.
+
+## Realtime y sincronización
+
+- Realtime habilitado en: `tasks`, `transactions`, `events`, `app_overview`, `habits`, `projects`, `goals`.
+- Cliente: `realtime.params.eventsPerSecond`, `heartbeatIntervalMs`, `reconnectAfterMs` (exponencial). Auth con `persistSession`, `autoRefreshToken`, `localStorage`.
+
+## Buenas prácticas
+
+- **Una fuente de verdad**: Supabase como origen; `localStorageCache` para carga rápida y resiliencia offline. Evitar duplicar lógica de sync fuera de `AppDataContext`.
+- Al cambiar tablas o tipos: actualizar `AppDataContext` (tipos TS y operaciones), migraciones en `supabase/` y, si aplica, políticas RLS.
+- Errores: manejar fallos de red y de Supabase de forma explícita; no tragar excepciones.
+- Nuevas columnas o tablas: seguir el patrón de `add-*.sql` y documentar en comentarios.
+
+## Contexto en tiempo real
+
+- Revisar `AppDataContext` para hooks (`addTask`, `updateGoal`, etc.) y estructura de tipos.
+- Revisar `supabase/schema.sql` y `add-*.sql` para estado actual del esquema y Realtime.

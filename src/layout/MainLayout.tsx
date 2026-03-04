@@ -8,10 +8,6 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
     const location = useLocation();
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/7f084667-d558-4e71-bb4a-835abfc84ca4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MainLayout.tsx:render',message:'MainLayout renderizando',data:{pathname:location.pathname,hasChildren:!!children},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
 
     return (
         <div className="full-screen bg-[var(--bg-primary)] text-[var(--text-primary)] relative" style={{ minHeight: '100vh', width: '100%', overflowX: 'hidden', overscrollBehavior: 'none' }}>

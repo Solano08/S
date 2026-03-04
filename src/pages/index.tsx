@@ -11,11 +11,15 @@ import {
     SFCalendar,
     SFPlus,
     SFMinus,
-    SFTrash
+    SFTrash,
+    SFLock
 } from '../components/ui/SFIcons';
 import { QuickActionsMenu } from '../components/ui/QuickActionsMenu';
+import { DatePicker } from '../components/ui/DatePicker';
+import { TimeSelect } from '../components/ui/TimeSelect';
 import { useAppData } from '../context/AppDataContext';
 import { useToday } from '../hooks/useToday';
+import { useTheme } from '../context/ThemeContext';
 
 export { Home } from './Home';
 
@@ -33,8 +37,10 @@ const getTaskPriorityColor = (priority: string): string => {
     }
 };
 
+const NEW_DRAFT_ID = 'new-draft';
+
 export const Projects = () => {
-    const { projects, addProject, updateProject } = useAppData();
+    const { projects, addProject, updateProject, deleteProject } = useAppData();
     const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
     const [projectContent, setProjectContent] = useState("");
     const [projectTitle, setProjectTitle] = useState("");
@@ -42,7 +48,10 @@ export const Projects = () => {
     const [projectEndDate, setProjectEndDate] = useState<string>("");
     const [projectStatus, setProjectStatus] = useState<'not-started' | 'in-progress' | 'completed'>('not-started');
     const [projectProgress, setProjectProgress] = useState<number>(0);
-    const [pendingNewProject, setPendingNewProject] = useState(false);
+    const [initialProjectTitle, setInitialProjectTitle] = useState("");
+    const [initialProjectContent, setInitialProjectContent] = useState("");
+    const [backConfirmOpen, setBackConfirmOpen] = useState(false);
+    const [deleteProjectConfirmId, setDeleteProjectConfirmId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
 
     // Calcular progreso basado en fechas
@@ -91,79 +100,21 @@ export const Projects = () => {
         });
     }, [projects, editingProjectId]);
 
-    const handleAddProject = async () => {
-        
-        // Si ya hay un proyecto en edición, guardarlo primero
-        if (editingProjectId) {
-            await handleSaveProject();
-        }
-        
-        const newProject = {
-            title: "",
-            description: "",
-            status: 'not-started' as const,
-            progress: 0
-        };
-        
-        
-        setPendingNewProject(true);
-        
-        
-        try {
-            await addProject(newProject);
-            
-            
-            // El formulario se abrirá automáticamente cuando el proyecto se cree
-            // gracias al useEffect que detecta pendingNewProject
-        } catch (error) {
-            console.error("❌ Error creando proyecto:", error);
-            setPendingNewProject(false);
-            alert(`Error al crear el proyecto: ${error instanceof Error ? error.message : 'Error desconocido'}`);
-        }
+    const handleAddProject = () => {
+        setEditingProjectId(NEW_DRAFT_ID);
+        setProjectTitle("");
+        setProjectContent("");
+        setProjectStartDate("");
+        setProjectEndDate("");
+        setProjectStatus('not-started');
+        setProjectProgress(0);
+        setInitialProjectTitle("");
+        setInitialProjectContent("");
     };
-
-    // Efecto para abrir el editor cuando se crea un nuevo proyecto
-    useEffect(() => {
-        
-        if (pendingNewProject && projects.length > 0) {
-            
-            // Buscar el proyecto más reciente (sin título o con título vacío)
-            const newProjects = projects
-                .filter(p => (!p.title || p.title === "" || p.title === "Nuevo proyecto") && (!editingProjectId || p.id !== editingProjectId));
-            
-            
-            const sortedProjects = newProjects.sort((a, b) => {
-                // Ordenar por created_at si existe
-                if (a.created_at && b.created_at) {
-                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-                }
-                // Si no, usar timestamp del ID
-                const aTime = a.id.includes('-') ? parseInt(a.id.split('-')[1] || '0') : 0;
-                const bTime = b.id.includes('-') ? parseInt(b.id.split('-')[1] || '0') : 0;
-                return bTime - aTime;
-            });
-            
-            if (sortedProjects.length > 0) {
-                const newProject = sortedProjects[0];
-                
-                
-                setEditingProjectId(newProject.id);
-                setProjectTitle(newProject.title || "");
-                setProjectContent(newProject.description || "");
-                setProjectStartDate(newProject.start_date || "");
-                setProjectEndDate(newProject.end_date || "");
-                setProjectStatus(newProject.status);
-                setProjectProgress(newProject.progress);
-                setPendingNewProject(false);
-                
-            } else {
-            }
-        }
-    }, [projects, pendingNewProject, editingProjectId]);
 
     // Efecto para actualizar editingProjectId si el ID del proyecto cambió (después de guardar en Supabase)
     useEffect(() => {
-        if (editingProjectId && editingProjectId.startsWith('project-')) {
+        if (editingProjectId && editingProjectId !== NEW_DRAFT_ID && editingProjectId.startsWith('project-')) {
             // Si estamos editando un proyecto con ID temporal, buscar si hay uno con ID real
             const projectWithTempId = projects.find(p => p.id === editingProjectId);
             if (!projectWithTempId) {
@@ -210,7 +161,7 @@ export const Projects = () => {
 
     // Efecto para inicializar el título y contenido cuando se selecciona un proyecto para editar
     useEffect(() => {
-        if (editingProjectId && !isSaving) {
+        if (editingProjectId && editingProjectId !== NEW_DRAFT_ID && !isSaving) {
             const project = projects.find(p => p.id === editingProjectId);
             if (project) {
                 // Solo actualizar si estamos cambiando de proyecto (no durante la edición)
@@ -260,80 +211,12 @@ export const Projects = () => {
             setProjectEndDate(project.end_date || "");
             setProjectStatus(project.status);
             setProjectProgress(project.progress);
+            setInitialProjectTitle(project.title);
+            setInitialProjectContent(project.description || "");
         }
     };
 
-    const handleSaveProject = async () => {
-        console.log('💾 [handleSaveProject] INICIO - Estado actual:', {
-            isSaving,
-            editingProjectId,
-            projectTitle,
-            projectContentLength: projectContent.length,
-            projectsCount: projects.length,
-            projectsIds: projects.map(p => p.id)
-        });
-        
-        
-        if (isSaving) {
-            console.warn('⚠️ [handleSaveProject] Ya se está guardando, ignorando llamada duplicada');
-            return;
-        }
-
-        if (!editingProjectId) {
-            alert('No hay proyecto seleccionado para guardar');
-            return;
-        }
-
-        setIsSaving(true);
-        
-
-        const titleToSave = projectTitle.trim() || "Sin título";
-        const descriptionToSave = projectContent.trim();
-        
-
-        // Buscar el proyecto - primero por ID, luego por título si es un ID temporal
-        let existingProject = projects.find(p => p.id === editingProjectId);
-        let projectIdToUse = editingProjectId;
-        
-        
-        // Si no encontramos el proyecto con el ID actual, buscar el más reciente
-        if (!existingProject) {
-            
-            const projectByTitle = projects
-                .filter(p => {
-                    if (titleToSave && titleToSave !== "Sin título" && titleToSave !== "Nuevo proyecto") {
-                        return p.title === titleToSave || !p.title || p.title === "";
-                    }
-                    return !p.title || p.title === "" || p.title === "Nuevo proyecto";
-                })
-                .sort((a, b) => {
-                    if (a.created_at && b.created_at) {
-                        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-                    }
-                    const aTime = a.id.includes('-') ? parseInt(a.id.split('-')[1] || '0') : 0;
-                    const bTime = b.id.includes('-') ? parseInt(b.id.split('-')[1] || '0') : 0;
-                    return bTime - aTime;
-                })[0];
-            
-            
-            if (projectByTitle) {
-                existingProject = projectByTitle;
-                projectIdToUse = projectByTitle.id;
-                setEditingProjectId(projectByTitle.id);
-                
-            }
-        }
-        
-        if (!existingProject) {
-            setIsSaving(false);
-            alert('Error: El proyecto no se encontró. Por favor, intenta de nuevo.');
-            return;
-        }
-
-
-        // Cerrar el editor INMEDIATAMENTE para feedback instantáneo
-        // El guardado continuará en segundo plano
-        setIsSaving(false);
+    const closeEditor = () => {
         setEditingProjectId(null);
         setProjectTitle("");
         setProjectContent("");
@@ -341,14 +224,25 @@ export const Projects = () => {
         setProjectEndDate("");
         setProjectStatus('not-started');
         setProjectProgress(0);
-        
-        console.log('💾 [handleSaveProject] Formulario cerrado. Guardando proyecto en segundo plano...');
-        
-        // Guardar en segundo plano (sin await para no bloquear)
-        // Usar void para indicar que no esperamos el resultado
-        void (async () => {
-            try {
-                await updateProject(projectIdToUse, {
+        setInitialProjectTitle("");
+        setInitialProjectContent("");
+        setBackConfirmOpen(false);
+    };
+
+    const handleSaveProject = async (): Promise<boolean> => {
+        if (isSaving) return false;
+        if (!editingProjectId) {
+            alert('No hay proyecto seleccionado para guardar');
+            return false;
+        }
+
+        setIsSaving(true);
+        const titleToSave = projectTitle.trim() || "Sin título";
+        const descriptionToSave = projectContent.trim();
+
+        try {
+            if (editingProjectId === NEW_DRAFT_ID) {
+                await addProject({
                     title: titleToSave,
                     description: descriptionToSave,
                     start_date: projectStartDate || undefined,
@@ -356,25 +250,62 @@ export const Projects = () => {
                     status: projectStatus,
                     progress: projectProgress
                 });
-                
-                console.log('✅ [handleSaveProject] Proyecto guardado exitosamente en segundo plano');
-            } catch (error: unknown) {
-                console.error('❌ [handleSaveProject] Error al guardar proyecto en segundo plano:', error);
-                const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-                // Mostrar error pero sin volver a abrir el formulario
-                alert(`Error al guardar el proyecto: ${errorMessage}`);
+            } else {
+                const existingProject = projects.find(p => p.id === editingProjectId);
+                if (!existingProject) {
+                    alert('Error: El proyecto no se encontró. Por favor, intenta de nuevo.');
+                    setIsSaving(false);
+                    return false;
+                }
+                await updateProject(editingProjectId, {
+                    title: titleToSave,
+                    description: descriptionToSave,
+                    start_date: projectStartDate || undefined,
+                    end_date: projectEndDate || undefined,
+                    status: projectStatus,
+                    progress: projectProgress
+                });
             }
-        })();
+            closeEditor();
+            return true;
+        } catch (error: unknown) {
+            console.error('Error al guardar proyecto:', error);
+            alert(`Error al guardar el proyecto: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+            return false;
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const hasProjectContent = () => !!(projectTitle.trim() || projectContent.trim());
+    const hasUnsavedChanges = () => {
+        if (editingProjectId === NEW_DRAFT_ID) return false;
+        return projectTitle.trim() !== initialProjectTitle.trim() ||
+            projectContent.trim() !== (initialProjectContent || "").trim();
     };
 
     const handleBackToList = () => {
-        setEditingProjectId(null);
-        setProjectTitle("");
-        setProjectContent("");
-        setProjectStartDate("");
-        setProjectEndDate("");
-        setProjectStatus('not-started');
-        setProjectProgress(0);
+        const isNewDraft = editingProjectId === NEW_DRAFT_ID;
+        const showPrompt = (isNewDraft && hasProjectContent()) || (!isNewDraft && hasUnsavedChanges());
+        if (showPrompt) {
+            setBackConfirmOpen(true);
+            return;
+        }
+        closeEditor();
+    };
+
+    const handleBackConfirmGuardar = async () => {
+        const ok = await handleSaveProject();
+        if (ok) setBackConfirmOpen(false);
+    };
+
+    const handleBackConfirmDescartar = () => {
+        setBackConfirmOpen(false);
+        closeEditor();
+    };
+
+    const handleBackConfirmCancelar = () => {
+        setBackConfirmOpen(false);
     };
 
     // Calcular estadísticas de proyectos
@@ -459,66 +390,13 @@ export const Projects = () => {
                                     }}>
                                         Inicio
                                     </label>
-                                    <div style={{ position: 'relative' }}>
-                                        <input
-                                            type="date"
+                                    <div className="task-picker">
+                                        <DatePicker
                                             value={projectStartDate}
-                                            onChange={(e) => {
-                                                setProjectStartDate(e.target.value);
-                                            }}
-                                            style={{
-                                                position: 'absolute',
-                                                opacity: 0,
-                                                width: '100%',
-                                                height: '100%',
-                                                cursor: 'pointer',
-                                                zIndex: 2,
-                                                top: 0,
-                                                left: 0
-                                            }}
+                                            onChange={setProjectStartDate}
+                                            placeholder="Seleccionar"
+                                            taskStyle={true}
                                         />
-                                        <button
-                                            type="button"
-                                            className="link-button"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                const input = e.currentTarget.parentElement?.querySelector('input[type="date"]') as HTMLInputElement;
-                                                if (input) {
-                                                    try {
-                                                        input.showPicker?.();
-                                                    } catch {
-                                                        input.click();
-                                                    }
-                                                }
-                                            }}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '6px',
-                                                padding: '8px 12px',
-                                                fontSize: '13px',
-                                                width: '100%',
-                                                justifyContent: 'flex-start',
-                                                pointerEvents: 'auto'
-                                            }}
-                                        >
-                                            <SFCalendar size={14} />
-                                            <span>
-                                                {projectStartDate 
-                                                    ? (() => {
-                                                        try {
-                                                            const date = projectStartDate.includes('T') 
-                                                                ? new Date(projectStartDate) 
-                                                                : new Date(projectStartDate + 'T00:00:00');
-                                                            return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-                                                        } catch {
-                                                            return projectStartDate;
-                                                        }
-                                                    })()
-                                                    : 'Seleccionar'
-                                                }
-                                            </span>
-                                        </button>
                                     </div>
                                 </div>
 
@@ -533,66 +411,13 @@ export const Projects = () => {
                                     }}>
                                         Entrega
                                     </label>
-                                    <div style={{ position: 'relative' }}>
-                                        <input
-                                            type="date"
+                                    <div className="task-picker">
+                                        <DatePicker
                                             value={projectEndDate}
-                                            onChange={(e) => {
-                                                setProjectEndDate(e.target.value);
-                                            }}
-                                            style={{
-                                                position: 'absolute',
-                                                opacity: 0,
-                                                width: '100%',
-                                                height: '100%',
-                                                cursor: 'pointer',
-                                                zIndex: 2,
-                                                top: 0,
-                                                left: 0
-                                            }}
+                                            onChange={setProjectEndDate}
+                                            placeholder="Seleccionar"
+                                            taskStyle={true}
                                         />
-                                        <button
-                                            type="button"
-                                            className="link-button"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                const input = e.currentTarget.parentElement?.querySelector('input[type="date"]') as HTMLInputElement;
-                                                if (input) {
-                                                    try {
-                                                        input.showPicker?.();
-                                                    } catch {
-                                                        input.click();
-                                                    }
-                                                }
-                                            }}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '6px',
-                                                padding: '8px 12px',
-                                                fontSize: '13px',
-                                                width: '100%',
-                                                justifyContent: 'flex-start',
-                                                pointerEvents: 'auto'
-                                            }}
-                                        >
-                                            <SFCalendar size={14} />
-                                            <span>
-                                                {projectEndDate 
-                                                    ? (() => {
-                                                        try {
-                                                            const date = projectEndDate.includes('T') 
-                                                                ? new Date(projectEndDate) 
-                                                                : new Date(projectEndDate + 'T00:00:00');
-                                                            return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-                                                        } catch {
-                                                            return projectEndDate;
-                                                        }
-                                                    })()
-                                                    : 'Seleccionar'
-                                                }
-                                            </span>
-                                        </button>
                                     </div>
                                 </div>
 
@@ -697,17 +522,48 @@ export const Projects = () => {
                             <div className="list-card">
                                 {projects.length > 0 ? (
                                     projects.map((project) => {
+                                        let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+                                        let hasLongPressed = false;
+
+                                        const handleLongPressStart = (e: React.TouchEvent | React.MouseEvent) => {
+                                            e.preventDefault();
+                                            hasLongPressed = false;
+                                            longPressTimer = setTimeout(() => {
+                                                hasLongPressed = true;
+                                                setDeleteProjectConfirmId(project.id);
+                                                longPressTimer = null;
+                                            }, 500); // 500ms para long press
+                                        };
+
+                                        const handleLongPressEnd = () => {
+                                            if (longPressTimer) {
+                                                clearTimeout(longPressTimer);
+                                                longPressTimer = null;
+                                            }
+                                        };
+
                                         return (
                                             <div 
                                                 key={project.id}
                                                 className="list-item"
                                                 style={{ cursor: 'pointer' }}
-                                                onClick={() => handleProjectClick(project.id)}
+                                                onClick={() => {
+                                                    if (!hasLongPressed) {
+                                                        handleLongPressEnd();
+                                                        handleProjectClick(project.id);
+                                                    }
+                                                    hasLongPressed = false;
+                                                }}
+                                                onTouchStart={handleLongPressStart}
+                                                onTouchEnd={handleLongPressEnd}
+                                                onMouseDown={handleLongPressStart}
+                                                onMouseUp={handleLongPressEnd}
                                                 onMouseEnter={(e) => {
                                                     e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
                                                 }}
                                                 onMouseLeave={(e) => {
                                                     e.currentTarget.style.background = 'transparent';
+                                                    handleLongPressEnd();
                                                 }}
                                             >
                                                 <div className="list-icon">
@@ -812,6 +668,221 @@ export const Projects = () => {
                     </section>
                     </>
                 )}
+
+                {/* Modal: ¿Desea guardar antes de salir? */}
+                {backConfirmOpen && (
+                    <div
+                        className="calendar-backdrop"
+                        onClick={handleBackConfirmCancelar}
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            zIndex: 300,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '20px',
+                            background: 'rgba(0,0,0,0.4)'
+                        }}
+                    >
+                        <div
+                            className="glass-card"
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                                maxWidth: '340px',
+                                width: '100%',
+                                padding: '24px',
+                                borderRadius: '16px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '20px'
+                            }}
+                        >
+                            <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                                ¿Desea guardar el proyecto antes de salir?
+                            </p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <button
+                                    type="button"
+                                    onClick={handleBackConfirmGuardar}
+                                    disabled={isSaving}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 16px',
+                                        borderRadius: '12px',
+                                        border: 'none',
+                                        background: 'var(--ios-blue)',
+                                        color: '#fff',
+                                        fontSize: '15px',
+                                        fontWeight: '600',
+                                        cursor: isSaving ? 'not-allowed' : 'pointer',
+                                        opacity: isSaving ? 0.7 : 1
+                                    }}
+                                >
+                                    {isSaving ? 'Guardando...' : 'Guardar'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleBackConfirmDescartar}
+                                    disabled={isSaving}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 16px',
+                                        borderRadius: '12px',
+                                        border: '1px solid var(--glass-border)',
+                                        background: 'transparent',
+                                        color: 'var(--text-primary)',
+                                        fontSize: '15px',
+                                        fontWeight: '600',
+                                        cursor: isSaving ? 'not-allowed' : 'pointer'
+                                    }}
+                                >
+                                    Descartar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleBackConfirmCancelar}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 16px',
+                                        borderRadius: '12px',
+                                        border: 'none',
+                                        background: 'rgba(255,255,255,0.06)',
+                                        color: 'var(--text-secondary)',
+                                        fontSize: '15px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Modal eliminar proyecto (misma ventana que tarea puntual) */}
+                {deleteProjectConfirmId && (
+                    <div className="calendar-modal">
+                        <button
+                            className="calendar-backdrop"
+                            aria-label="Cerrar confirmación"
+                            onClick={() => setDeleteProjectConfirmId(null)}
+                        />
+                        <motion.div
+                            className="calendar-modal-card"
+                            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                            transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
+                            style={{ maxWidth: '360px', width: '100%' }}
+                        >
+                            <div style={{ padding: '32px 28px', textAlign: 'center' }}>
+                                <div style={{
+                                    width: '64px',
+                                    height: '64px',
+                                    borderRadius: '50%',
+                                    backgroundColor: 'rgba(255, 69, 58, 0.15)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    margin: '0 auto 20px auto'
+                                }}>
+                                    <svg
+                                        width="28"
+                                        height="28"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="var(--ios-red)"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <path d="M3 6h18" />
+                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                        <line x1="10" y1="11" x2="10" y2="17" />
+                                        <line x1="14" y1="11" x2="14" y2="17" />
+                                    </svg>
+                                </div>
+                                <h3 style={{
+                                    fontSize: '20px',
+                                    fontWeight: '700',
+                                    color: 'var(--text-primary)',
+                                    margin: '0 0 8px 0',
+                                    letterSpacing: '-0.3px'
+                                }}>
+                                    ¿Eliminar proyecto?
+                                </h3>
+                                <p style={{
+                                    fontSize: '14px',
+                                    color: 'var(--text-secondary)',
+                                    margin: '0 0 28px 0',
+                                    lineHeight: '1.5',
+                                    padding: '0 8px'
+                                }}>
+                                    Esta acción no se puede deshacer. El proyecto se eliminará permanentemente.
+                                </p>
+                                <div style={{
+                                    display: 'flex',
+                                    gap: '10px',
+                                    justifyContent: 'center'
+                                }}>
+                                    <button
+                                        className="link-button"
+                                        onClick={() => setDeleteProjectConfirmId(null)}
+                                        style={{
+                                            padding: '14px 28px',
+                                            fontSize: '15px',
+                                            fontWeight: '600',
+                                            color: 'var(--text-secondary)',
+                                            flex: 1,
+                                            borderRadius: '12px',
+                                            transition: 'background-color 0.2s ease'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.backgroundColor = 'transparent';
+                                        }}
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            deleteProject(deleteProjectConfirmId);
+                                            setDeleteProjectConfirmId(null);
+                                        }}
+                                        style={{
+                                            padding: '14px 28px',
+                                            fontSize: '15px',
+                                            fontWeight: '600',
+                                            backgroundColor: 'var(--ios-red)',
+                                            color: '#ffffff',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            flex: 1,
+                                            cursor: 'pointer',
+                                            transition: 'opacity 0.2s ease, transform 0.2s ease',
+                                            boxShadow: '0 4px 12px rgba(255, 69, 58, 0.25)'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.opacity = '0.9';
+                                            e.currentTarget.style.transform = 'scale(0.98)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.opacity = '1';
+                                            e.currentTarget.style.transform = 'scale(1)';
+                                        }}
+                                    >
+                                        Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -819,63 +890,120 @@ export const Projects = () => {
 const INVESTMENT_CATEGORIES = [
     { id: 'home', label: 'Casa', icon: '🏠' },
     { id: 'clothing', label: 'Ropa', icon: '👕' },
-    { 
-        id: 'crypto', 
-        label: 'Cripto', 
-        icon: '₿', 
+    {
+        id: 'crypto',
+        label: 'Cripto',
+        icon: '₿',
         subcategories: [
             { id: 'BTC', label: 'Bitcoin', icon: '₿' },
             { id: 'ETH', label: 'Ethereum', icon: 'Ξ' },
             { id: 'SOL', label: 'Solana', icon: '◎' },
             { id: 'USDT', label: 'USDT', icon: '₮' },
             { id: 'BNB', label: 'BNB', icon: '🟡' }
-        ] 
+        ]
     },
     { id: 'cars', label: 'Carros', icon: '🚗' },
     { id: 'food', label: 'Comida', icon: '🍔' },
     { id: 'shopping', label: 'Compras', icon: '🛍️' },
-    { 
-        id: 'entertainment', 
-        label: 'Entretenimiento', 
-        icon: '🎬', 
+    {
+        id: 'entertainment',
+        label: 'Entretenimiento',
+        icon: '🎬',
         subcategories: [
             { id: 'Spotify', label: 'Spotify', icon: '🎧' },
             { id: 'Netflix', label: 'Netflix', icon: '🎬' },
             { id: 'Disney+', label: 'Disney+', icon: '🏰' },
             { id: 'Prime', label: 'Prime Video', icon: '📦' },
             { id: 'AppleTV', label: 'Apple TV', icon: '🍎' }
-        ] 
+        ]
     },
+    { id: 'stocks', label: 'Acciones', icon: '📈' },
+    { id: 'land', label: 'Terrenos', icon: '🏞️' },
+    { id: 'realestate', label: 'Inmuebles', icon: '🏢' },
+    { id: 'business', label: 'Negocios', icon: '💼' },
+    { id: 'etf', label: 'ETF', icon: '📊' },
+    { id: 'gold', label: 'Oro', icon: '🥇' },
+    { id: 'emergency', label: 'Fondo emergencia', icon: '🛡️' },
+    { id: 'savings', label: 'Ahorros', icon: '🐷' },
 ];
 
 export const Finances = () => {
     const { balance, income, expenses, transactions, addTransaction } = useAppData();
     
-    // Calcular inversiones
+    const realInvestmentCategories = ['Cripto', 'Casa', 'Carros', 'Acciones', 'Terrenos', 'Inmuebles', 'Negocios', 'ETF', 'Oro', 'Fondo emergencia', 'Ahorros'];
+    
+    // Calcular inversiones totales (solo inversiones reales)
     const investmentsTotal = useMemo(() => {
         return (transactions || [])
-            .filter(t => ['Cripto', 'Inversión', 'Inversiones', 'Acciones', 'Casa', 'Ropa', 'Carros', 'Comida', 'Compras', 'Entretenimiento'].includes(t.category))
+            .filter(t => realInvestmentCategories.includes(t.category))
             .reduce((acc, t) => acc + Math.abs(t.amount), 0);
     }, [transactions]);
 
-    // Filtrar transacciones de inversión
-    const investmentTransactions = useMemo(() => {
-        return (transactions || []).filter(t => 
-            ['Cripto', 'Inversión', 'Inversiones', 'Acciones', 'Casa', 'Ropa', 'Carros', 'Comida', 'Compras', 'Entretenimiento'].includes(t.category)
+    // Agrupar inversiones por tipo y sumar montos
+    const groupedInvestments = useMemo(() => {
+        const filtered = (transactions || []).filter(t => 
+            realInvestmentCategories.includes(t.category)
         );
+        
+        // Agrupar por título (que es el nombre de la inversión, ej: "Bitcoin", "Solana", "Casa")
+        const grouped = new Map<string, { title: string; category: string; totalAmount: number; icon: string }>();
+        
+        filtered.forEach(t => {
+            const key = t.title; // Usar el título como clave (ej: "Bitcoin", "Solana")
+            const existing = grouped.get(key);
+            
+            // Buscar el icono correspondiente
+            const categoryData = INVESTMENT_CATEGORIES.find(cat => 
+                cat.label === t.category || 
+                cat.subcategories?.some(sub => sub.label === t.title)
+            );
+            const subcategoryData = categoryData?.subcategories?.find(sub => sub.label === t.title);
+            const icon = subcategoryData?.icon || categoryData?.icon || '💰';
+            
+            if (existing) {
+                // Sumar al monto existente
+                existing.totalAmount += Math.abs(t.amount);
+            } else {
+                // Crear nueva entrada
+                grouped.set(key, {
+                    title: t.title,
+                    category: t.category,
+                    totalAmount: Math.abs(t.amount),
+                    icon: icon
+                });
+            }
+        });
+        
+        // Convertir a array y ordenar por monto total (mayor a menor)
+        return Array.from(grouped.values()).sort((a, b) => b.totalAmount - a.totalAmount);
+    }, [transactions]);
+
+    const investmentTransactions = useMemo(() => {
+        const cats = ['Cripto', 'Inversión', 'Inversiones', 'Acciones', 'Casa', 'Ropa', 'Carros', 'Comida', 'Compras', 'Entretenimiento', 'Terrenos', 'Inmuebles', 'Negocios', 'ETF', 'Oro', 'Fondo emergencia', 'Ahorros'];
+        const filtered = (transactions || []).filter(t => cats.includes(t.category));
+        // Ordenar por fecha (más recientes primero) - las transacciones no tienen date, mantener orden original
+        return filtered;
     }, [transactions]);
 
     const percentUsed = Math.round((expenses / Math.max(income, 1)) * 100);
     const [showAddModal, setShowAddModal] = useState(false);
     const [showInvestmentsModal, setShowInvestmentsModal] = useState(false);
+    const [showAllInvestments, setShowAllInvestments] = useState(false);
     const [step, setStep] = useState(1);
     const [amount, setAmount] = useState("");
     const [selectedCategory, setSelectedCategory] = useState<typeof INVESTMENT_CATEGORIES[0] | null>(null);
     const [selectedSubcategory, setSelectedSubcategory] = useState<{id: string, label: string, icon: string} | null>(null);
     const [balanceCalculatorOpen, setBalanceCalculatorOpen] = useState(false);
-    const [balanceCalculatorValue, setBalanceCalculatorValue] = useState(0);
+    const [balanceCalculatorValueCOP, setBalanceCalculatorValueCOP] = useState(0);
+    const [balanceCalculatorValueUSD, setBalanceCalculatorValueUSD] = useState(0);
     const [currency, setCurrency] = useState<'COP' | 'USD'>('COP');
     const [exchangeRate, setExchangeRate] = useState(4100); // Valor por defecto
+    const [isEditingBalance, setIsEditingBalance] = useState(false);
+    const [tempBalanceInput, setTempBalanceInput] = useState('');
+    const [calculatorMode, setCalculatorMode] = useState<'balance' | 'investment'>('balance');
+    const [minusButtonActive, setMinusButtonActive] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const { theme } = useTheme();
 
     // Obtener tasa de cambio real
     useEffect(() => {
@@ -912,21 +1040,57 @@ export const Finances = () => {
     };
 
     const handleSaveBalanceUpdate = () => {
-        let amountInCOP = balanceCalculatorValue;
+        const currentValue = currency === 'USD' ? balanceCalculatorValueUSD : balanceCalculatorValueCOP;
+        if (currentValue <= 0) return;
+        
+        setIsSaving(true);
+        
+        let amountInCOP = currentValue;
         
         // Si es USD, convertir a COP para guardar en la base de datos (que maneja COP)
         if (currency === 'USD') {
-            amountInCOP = balanceCalculatorValue * exchangeRate;
+            amountInCOP = balanceCalculatorValueUSD * exchangeRate;
+        } else {
+            amountInCOP = balanceCalculatorValueCOP;
         }
 
-        addTransaction({
-            title: 'Ingreso registrado',
-            category: 'Ingreso',
-            amount: amountInCOP
-        });
-        setBalanceCalculatorOpen(false);
-        setBalanceCalculatorValue(0); // Reset a 0
-        setCurrency('COP');
+        if (calculatorMode === 'investment') {
+            // Guardar como inversión
+            if (!selectedCategory) {
+                setIsSaving(false);
+                return;
+            }
+            
+            addTransaction({
+                title: selectedSubcategory?.label || selectedCategory.label,
+                category: selectedCategory.label,
+                amount: -amountInCOP // Negativo como inversión (salida de dinero)
+            });
+
+            // Reset form
+            setAmount("");
+            setSelectedCategory(null);
+            setSelectedSubcategory(null);
+            setStep(1);
+            setShowAddModal(false);
+        } else {
+            // Guardar como ingreso
+            addTransaction({
+                title: 'Ingreso registrado',
+                category: 'Ingreso',
+                amount: amountInCOP
+            });
+        }
+
+        // Reset calculator después de un pequeño delay para mostrar el estado verde
+        setTimeout(() => {
+            setBalanceCalculatorValueCOP(0);
+            setBalanceCalculatorValueUSD(0);
+            setCurrency('COP');
+            setBalanceCalculatorOpen(false);
+            setCalculatorMode('balance');
+            setIsSaving(false);
+        }, 300);
     };
 
     return (
@@ -944,7 +1108,13 @@ export const Finances = () => {
                 <section className="app-section">
                     <div 
                         className="hero-card" 
-                        onClick={() => setBalanceCalculatorOpen(true)}
+                        onClick={() => {
+                            setCalculatorMode('balance');
+                            setBalanceCalculatorValueCOP(0);
+                            setBalanceCalculatorValueUSD(0);
+                            setIsSaving(false);
+                            setBalanceCalculatorOpen(true);
+                        }}
                         style={{ 
                             background: 'var(--glass-bg-base)',
                             border: '1px solid var(--glass-border)',
@@ -991,17 +1161,11 @@ export const Finances = () => {
                                     </span>
                                 </div>
                             </div>
-                            <div style={{
+                            <div className="hero-icon" style={{
                                 width: '48px',
-                                height: '48px',
-                                borderRadius: '12px',
-                                background: 'rgba(41, 151, 255, 0.1)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                border: '1px solid rgba(41, 151, 255, 0.2)'
+                                height: '48px'
                             }}>
-                                <span style={{ color: 'var(--ios-blue)' }}><SFWallet size={24} /></span>
+                                <SFWallet size={24} />
                             </div>
                         </div>
                     </div>
@@ -1013,14 +1177,11 @@ export const Finances = () => {
                         <h3>Balance General</h3>
                     </div>
                     <div 
-                        className="hero-card" 
+                        className="hero-card"
                         onClick={() => setShowInvestmentsModal(true)}
                         style={{ 
                             cursor: 'pointer',
-                            background: 'var(--glass-bg-base)',
-                            border: '1px solid var(--glass-border)',
-                            transition: 'all 0.2s ease',
-                            padding: '20px'
+                            transition: 'all 0.2s ease'
                         }}
                         onMouseEnter={(e) => {
                             e.currentTarget.style.transform = 'translateY(-1px)';
@@ -1042,27 +1203,14 @@ export const Finances = () => {
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '10px',
-                                padding: '16px',
-                                borderRadius: '12px',
-                                background: 'rgba(48, 219, 91, 0.06)',
-                                border: '1px solid rgba(48, 219, 91, 0.15)'
+                                padding: '0'
                             }}>
                                 <div style={{ 
                                     display: 'flex', 
                                     alignItems: 'center', 
                                     gap: '10px'
                                 }}>
-                                    <div style={{
-                                        width: '32px',
-                                        height: '32px',
-                                        borderRadius: '8px',
-                                        background: 'rgba(48, 219, 91, 0.15)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}>
-                                        <span style={{ color: 'var(--ios-green)' }}><SFTrendingUp size={18} /></span>
-                                    </div>
+                                    <span style={{ color: 'var(--ios-green)' }}><SFTrendingUp size={18} /></span>
                                     <span style={{
                                         fontSize: '10px',
                                         fontWeight: '600',
@@ -1095,33 +1243,18 @@ export const Finances = () => {
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '10px',
-                                padding: '16px',
-                                borderRadius: '12px',
-                                background: 'linear-gradient(135deg, rgba(94, 92, 230, 0.12) 0%, rgba(191, 90, 242, 0.08) 100%)',
-                                border: '1px solid rgba(94, 92, 230, 0.2)',
-                                boxShadow: '0 2px 8px rgba(94, 92, 230, 0.1)'
+                                padding: '0'
                             }}>
                                 <div style={{ 
                                     display: 'flex', 
                                     alignItems: 'center', 
                                     gap: '10px'
                                 }}>
-                                    <div style={{
-                                        width: '32px',
-                                        height: '32px',
-                                        borderRadius: '8px',
-                                        background: 'linear-gradient(135deg, rgba(94, 92, 230, 0.25) 0%, rgba(191, 90, 242, 0.25) 100%)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        boxShadow: '0 2px 6px rgba(94, 92, 230, 0.2)'
-                                    }}>
-                                        <span style={{ color: 'var(--ios-indigo)' }}><SFTrendingUp size={18} /></span>
-                                    </div>
+                                    <span style={{ color: 'var(--ios-blue)' }}><SFTrendingUp size={18} /></span>
                                     <span style={{
                                         fontSize: '10px',
                                         fontWeight: '600',
-                                        color: 'var(--ios-indigo)',
+                                        color: 'var(--text-tertiary)',
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.8px'
                                     }}>
@@ -1132,7 +1265,7 @@ export const Finances = () => {
                                     margin: 0, 
                                     fontSize: '24px', 
                                     fontWeight: '700',
-                                    color: 'var(--ios-indigo)',
+                                    color: 'var(--ios-blue)',
                                     lineHeight: '1.1'
                                 }}>
                                     ${investmentsTotal.toLocaleString('es-CO')}
@@ -1140,9 +1273,9 @@ export const Finances = () => {
                                 <span style={{
                                     fontSize: '10px',
                                     color: 'var(--text-tertiary)',
-                                    opacity: 0.7
+                                    opacity: 0.8
                                 }}>
-                                    En crecimiento
+                                    Total invertido
                                 </span>
                             </div>
                         </div>
@@ -1151,8 +1284,17 @@ export const Finances = () => {
 
                 {/* Registro de Inversiones */}
                 <section className="app-section">
-                    <div className="section-title">
+                    <div className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <h3>Registro de inversiones</h3>
+                        {investmentTransactions.length > 0 && (
+                            <button
+                                className="hero-icon-button"
+                                onClick={() => setShowAddModal(true)}
+                                aria-label="Agregar inversión"
+                            >
+                                <SFPlus size={18} />
+                            </button>
+                        )}
                     </div>
                     <div className="list-card">
                         {investmentTransactions.length === 0 ? (
@@ -1167,11 +1309,13 @@ export const Finances = () => {
                                     background: 'transparent'
                                 }}
                             >
-                                <SFPlus size={32} color="var(--ios-blue)" />
+                                <button className="hero-icon-button" style={{ width: '40px', height: '40px' }} aria-label="Agregar inversión">
+                                    <SFPlus size={20} />
+                                </button>
                             </div>
                         ) : (
                             <>
-                                {investmentTransactions.map((tx) => (
+                                {(showAllInvestments ? investmentTransactions : investmentTransactions.slice(-3)).map((tx) => (
                                     <div className="list-item" key={tx.id}>
                                         <div className="list-icon">
                                             <SFTrendingUp size={18} className="text-blue-500" />
@@ -1185,31 +1329,40 @@ export const Finances = () => {
                                         </span>
                                     </div>
                                 ))}
-                                <div 
-                                    onClick={() => setShowAddModal(true)}
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        padding: '16px',
-                                        cursor: 'pointer',
-                                        marginTop: '8px'
-                                    }}
-                                >
-                                    <SFPlus size={24} color="var(--ios-blue)" />
-                                </div>
+                                {investmentTransactions.length > 3 && (
+                                    <button
+                                        onClick={() => setShowAllInvestments(!showAllInvestments)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px',
+                                            marginTop: '8px',
+                                            background: 'transparent',
+                                            border: '1px solid var(--glass-border)',
+                                            borderRadius: '12px',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '14px',
+                                            fontWeight: '600',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        {showAllInvestments ? 'Ver menos' : 'Ver más'}
+                                    </button>
+                                )}
                             </>
                         )}
                     </div>
                 </section>
             </div>
 
-            {/* Calculadora de Balance (Bottom Sheet) */}
+            {/* Calculadora de Balance (Bottom Sheet) - solo en modo ingresos (raíz) */}
             <AnimatePresence>
-                {balanceCalculatorOpen && (
+                {balanceCalculatorOpen && calculatorMode === 'balance' && (
                     <div 
                         className="calendar-backdrop" 
-                        onClick={() => setBalanceCalculatorOpen(false)}
+                        onClick={() => {
+                            setBalanceCalculatorOpen(false);
+                        }}
                         style={{ 
                             position: 'fixed',
                             inset: 0,
@@ -1240,13 +1393,16 @@ export const Finances = () => {
                             }}
                         >
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                {/* Header con selector de moneda y conversión */}
+                                {/* Header con selector de moneda y conversión (solo ingresos) */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ display: 'flex', gap: '4px', background: 'rgba(118, 118, 128, 0.12)', padding: '3px', borderRadius: '10px' }}>
                                         <button
-                                            onClick={() => setCurrency('USD')}
+                                            onClick={() => {
+                                                setCurrency('USD');
+                                                setBalanceCalculatorValueUSD(0);
+                                            }}
                                             style={{
-                                                padding: '6px 16px',
+                                                padding: '6px 14px',
                                                 borderRadius: '8px',
                                                 border: 'none',
                                                 background: currency === 'USD' ? 'var(--bg-primary)' : 'transparent',
@@ -1258,12 +1414,20 @@ export const Finances = () => {
                                                 transition: 'all 0.2s'
                                             }}
                                         >
-                                            USD
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.05 }}>
+                                                <span style={{ fontSize: '16px', marginBottom: '2px' }}>🇺🇸</span>
+                                                <span style={{ fontSize: '11px', fontWeight: 700 }}>
+                                                    Dólares <span style={{ fontSize: '9px', fontWeight: 700, opacity: 0.8 }}>(USD)</span>
+                                                </span>
+                                            </div>
                                         </button>
                                         <button
-                                            onClick={() => setCurrency('COP')}
+                                            onClick={() => {
+                                                setCurrency('COP');
+                                                setBalanceCalculatorValueCOP(0);
+                                            }}
                                             style={{
-                                                padding: '6px 16px',
+                                                padding: '6px 14px',
                                                 borderRadius: '8px',
                                                 border: 'none',
                                                 background: currency === 'COP' ? 'var(--bg-primary)' : 'transparent',
@@ -1275,7 +1439,12 @@ export const Finances = () => {
                                                 transition: 'all 0.2s'
                                             }}
                                         >
-                                            COP
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.05 }}>
+                                                <span style={{ fontSize: '16px', marginBottom: '2px' }}>🇨🇴</span>
+                                                <span style={{ fontSize: '11px', fontWeight: 700 }}>
+                                                    Colombia <span style={{ fontSize: '9px', fontWeight: 700, opacity: 0.8 }}>(COP)</span>
+                                                </span>
+                                            </div>
                                         </button>
                                     </div>
 
@@ -1285,8 +1454,8 @@ export const Finances = () => {
                                         </span>
                                         <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>
                                             {currency === 'USD' 
-                                                ? `≈ $${(balanceCalculatorValue * exchangeRate).toLocaleString('es-CO')} COP`
-                                                : `≈ $${(balanceCalculatorValue / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 2 })} USD`
+                                                ? `≈ $${(balanceCalculatorValueUSD * exchangeRate).toLocaleString('es-CO')} COP`
+                                                : `≈ $${(balanceCalculatorValueCOP / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 2 })} USD`
                                             }
                                         </span>
                                     </div>
@@ -1294,7 +1463,20 @@ export const Finances = () => {
 
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '4px 0' }}>
                                     <button
-                                        onClick={() => setBalanceCalculatorValue(prev => Math.max(0, prev - (currency === 'USD' ? 20 : 200000)))}
+                                        onClick={() => {
+                                            setMinusButtonActive(true);
+                                            const decrement = currency === 'USD' ? 20 : 20000;
+                                            if (currency === 'USD') {
+                                                setBalanceCalculatorValueUSD(prev => Math.max(0, prev - decrement));
+                                            } else {
+                                                setBalanceCalculatorValueCOP(prev => Math.max(0, prev - decrement));
+                                            }
+                                            setTimeout(() => setMinusButtonActive(false), 200);
+                                        }}
+                                        onMouseDown={() => setMinusButtonActive(true)}
+                                        onMouseUp={() => setTimeout(() => setMinusButtonActive(false), 200)}
+                                        onTouchStart={() => setMinusButtonActive(true)}
+                                        onTouchEnd={() => setTimeout(() => setMinusButtonActive(false), 200)}
                                         style={{
                                             width: '50px',
                                             height: '50px',
@@ -1302,12 +1484,14 @@ export const Finances = () => {
                                             border: 'none',
                                             background: 'transparent',
                                             fontSize: '24px',
-                                            color: 'var(--text-primary)',
+                                            color: theme === 'dark' 
+                                                ? (minusButtonActive ? '#ff453a' : '#fff')
+                                                : '#000',
                                             cursor: 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                            transition: 'all 0.1s'
+                                            transition: 'color 0.15s ease'
                                         }}
                                         className="calculator-minus-btn"
                                     >
@@ -1323,7 +1507,11 @@ export const Finances = () => {
                                                 onBlur={() => {
                                                     const val = parseFloat(tempBalanceInput);
                                                     if (!isNaN(val) && val >= 0) {
-                                                        setBalanceCalculatorValue(val);
+                                                        if (currency === 'USD') {
+                                                            setBalanceCalculatorValueUSD(val);
+                                                        } else {
+                                                            setBalanceCalculatorValueCOP(val);
+                                                        }
                                                     }
                                                     setIsEditingBalance(false);
                                                 }}
@@ -1331,7 +1519,11 @@ export const Finances = () => {
                                                     if (e.key === 'Enter') {
                                                         const val = parseFloat(tempBalanceInput);
                                                         if (!isNaN(val) && val >= 0) {
-                                                            setBalanceCalculatorValue(val);
+                                                            if (currency === 'USD') {
+                                                                setBalanceCalculatorValueUSD(val);
+                                                            } else {
+                                                                setBalanceCalculatorValueCOP(val);
+                                                            }
                                                         }
                                                         setIsEditingBalance(false);
                                                     }
@@ -1352,14 +1544,15 @@ export const Finances = () => {
                                         ) : (
                                             <div 
                                                 onClick={() => {
-                                                    setTempBalanceInput(balanceCalculatorValue.toString());
+                                                    const currentValue = currency === 'USD' ? balanceCalculatorValueUSD : balanceCalculatorValueCOP;
+                                                    setTempBalanceInput(currentValue.toString());
                                                     setIsEditingBalance(true);
                                                 }}
                                                 style={{ cursor: 'pointer' }}
                                             >
                                                 <span style={{ fontSize: '36px', fontWeight: '700', color: 'var(--text-primary)', letterSpacing: '-1px' }}>
                                                     {currency === 'USD' ? '$' : ''}
-                                                    {balanceCalculatorValue.toLocaleString(currency === 'USD' ? 'en-US' : 'es-CO')}
+                                                    {(currency === 'USD' ? balanceCalculatorValueUSD : balanceCalculatorValueCOP).toLocaleString(currency === 'USD' ? 'en-US' : 'es-CO')}
                                                 </span>
                                                 <p style={{ margin: '2px 0 0', fontSize: '14px', color: 'var(--text-tertiary)' }}>
                                                     {currency === 'USD' ? 'Dólares' : 'Pesos Colombianos'}
@@ -1370,8 +1563,12 @@ export const Finances = () => {
 
                                     <button
                                         onClick={() => {
-                                            const increment = currency === 'USD' ? 100 : 1000000;
-                                            setBalanceCalculatorValue(prev => prev + increment);
+                                            const increment = currency === 'USD' ? 100 : 100000;
+                                            if (currency === 'USD') {
+                                                setBalanceCalculatorValueUSD(prev => prev + increment);
+                                            } else {
+                                                setBalanceCalculatorValueCOP(prev => prev + increment);
+                                            }
                                         }}
                                         style={{
                                             width: '50px',
@@ -1395,18 +1592,21 @@ export const Finances = () => {
 
                                 <button
                                     onClick={handleSaveBalanceUpdate}
+                                    disabled={(currency === 'USD' ? balanceCalculatorValueUSD : balanceCalculatorValueCOP) <= 0 || isSaving}
                                     style={{
                                         width: '100%',
-                                        padding: '14px',
-                                        borderRadius: '14px',
-                                        background: 'var(--ios-green)',
-                                        color: '#fff',
-                                        fontSize: '16px',
+                                        padding: '10px',
+                                        borderRadius: '12px',
+                                        background: isSaving ? 'var(--ios-green)' : 'rgba(255, 255, 255, 0.1)',
+                                        color: isSaving ? '#fff' : 'var(--text-tertiary)',
+                                        fontSize: '14px',
                                         fontWeight: '600',
                                         border: 'none',
-                                        cursor: 'pointer',
-                                        boxShadow: '0 4px 12px rgba(48, 219, 91, 0.25)',
-                                        marginBottom: '0'
+                                        cursor: (currency === 'USD' ? balanceCalculatorValueUSD : balanceCalculatorValueCOP) > 0 && !isSaving ? 'pointer' : 'not-allowed',
+                                        boxShadow: isSaving ? '0 4px 12px rgba(48, 219, 91, 0.25)' : 'none',
+                                        marginBottom: '0',
+                                        opacity: (currency === 'USD' ? balanceCalculatorValueUSD : balanceCalculatorValueCOP) > 0 ? 1 : 0.5,
+                                        transition: 'all 0.2s'
                                     }}
                                 >
                                     Guardar Ingreso
@@ -1468,7 +1668,7 @@ export const Finances = () => {
                         </button>
                     </div>
 
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '20px', position: 'relative' }}>
                         {/* Paso 1: Selección de Categoría (Grid Uniforme) */}
                         {step === 1 && (
                             <div style={{ 
@@ -1487,7 +1687,11 @@ export const Finances = () => {
                                             if (cat.subcategories) {
                                                 setStep(2);
                                             } else {
-                                                setStep(3);
+                                                setCalculatorMode('investment');
+                                                setBalanceCalculatorValueCOP(0);
+                                                setBalanceCalculatorValueUSD(0);
+                                                setIsSaving(false);
+                                                setBalanceCalculatorOpen(true);
                                             }
                                         }}
                                         style={{
@@ -1515,6 +1719,31 @@ export const Finances = () => {
                         {/* Paso 2: Selección de Subcategoría (Grid Uniforme) */}
                         {step === 2 && selectedCategory && (
                             <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                <button
+                                    onClick={() => {
+                                        setStep(1);
+                                        setSelectedCategory(null);
+                                        setSelectedSubcategory(null);
+                                    }}
+                                    style={{
+                                        marginBottom: '20px',
+                                        padding: '12px 20px',
+                                        borderRadius: '12px',
+                                        border: '1px solid var(--glass-border)',
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        color: 'var(--text-primary)',
+                                        fontSize: '14px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px',
+                                        alignSelf: 'flex-start'
+                                    }}
+                                >
+                                    ← Volver a categorías
+                                </button>
                                 <div style={{ 
                                     display: 'grid', 
                                     gridTemplateColumns: 'repeat(3, 1fr)', 
@@ -1527,7 +1756,11 @@ export const Finances = () => {
                                             whileTap={{ scale: 0.95 }}
                                             onClick={() => {
                                                 setSelectedSubcategory(sub);
-                                                setStep(3);
+                                                setCalculatorMode('investment');
+                                                setBalanceCalculatorValueCOP(0);
+                                                setBalanceCalculatorValueUSD(0);
+                                                setIsSaving(false);
+                                                setBalanceCalculatorOpen(true);
                                             }}
                                             style={{
                                                 aspectRatio: '1',
@@ -1571,15 +1804,15 @@ export const Finances = () => {
                             </div>
                         )}
 
-                        {/* Paso 3: Monto */}
-                        {step === 3 && selectedCategory && (
+                        {/* Paso 3 eliminado - ahora se usa la calculadora */}
+                        {false && (
                             <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
                                 <div style={{ textAlign: 'center', padding: '30px', background: 'rgba(255,255,255,0.03)', borderRadius: '24px' }}>
                                     <span style={{ fontSize: '64px', display: 'block', marginBottom: '16px' }}>
-                                        {selectedSubcategory?.icon || selectedCategory.icon}
+                                        {selectedSubcategory?.icon || selectedCategory?.icon || '💰'}
                                     </span>
                                     <p style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                                        {selectedSubcategory?.label || selectedCategory.label}
+                                        {selectedSubcategory?.label || selectedCategory?.label || 'Inversión'}
                                     </p>
                                 </div>
 
@@ -1636,7 +1869,7 @@ export const Finances = () => {
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            if (selectedCategory.subcategories) {
+                                            if (selectedCategory?.subcategories) {
                                                 setStep(2);
                                                 setSelectedSubcategory(null);
                                             } else {
@@ -1681,293 +1914,353 @@ export const Finances = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* Calculadora inversiones: overlay desenfoca fondo del modal (categorías), no vista principal */}
+                        {balanceCalculatorOpen && calculatorMode === 'investment' && (
+                            <AnimatePresence>
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    onClick={() => setBalanceCalculatorOpen(false)}
+                                    style={{
+                                        position: 'absolute',
+                                        inset: 0,
+                                        zIndex: 20,
+                                        display: 'flex',
+                                        alignItems: 'flex-end',
+                                        justifyContent: 'center',
+                                        paddingBottom: 'calc(16px + env(safe-area-inset-bottom))',
+                                        background: 'rgba(0,0,0,0.35)',
+                                        backdropFilter: 'blur(20px)',
+                                        WebkitBackdropFilter: 'blur(20px)',
+                                    }}
+                                >
+                                    <motion.div
+                                        initial={{ y: '100%', opacity: 0 }}
+                                        animate={{ y: 0, opacity: 1 }}
+                                        exit={{ y: '100%', opacity: 0 }}
+                                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        style={{
+                                            width: '100%',
+                                            maxWidth: '100%',
+                                            borderRadius: '24px 24px 0 0',
+                                            padding: '20px 24px',
+                                            background: 'var(--bg-secondary)',
+                                            borderTop: '1px solid var(--glass-border)',
+                                            boxShadow: '0 -4px 20px rgba(0,0,0,0.1)',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            {selectedCategory && (
+                                                <div style={{ textAlign: 'center', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '16px', marginBottom: '8px' }}>
+                                                    <span style={{ fontSize: '32px', display: 'block', marginBottom: '8px' }}>
+                                                        {selectedSubcategory?.icon || selectedCategory.icon}
+                                                    </span>
+                                                    <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                                                        {selectedSubcategory?.label || selectedCategory.label}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ display: 'flex', gap: '4px', background: 'rgba(118, 118, 128, 0.12)', padding: '3px', borderRadius: '10px' }}>
+                                                    <button
+                                                        onClick={() => { setCurrency('USD'); setBalanceCalculatorValueUSD(0); }}
+                                                        style={{ padding: '6px 16px', borderRadius: '8px', border: 'none', background: currency === 'USD' ? 'var(--bg-primary)' : 'transparent', color: currency === 'USD' ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: '13px', fontWeight: '600', boxShadow: currency === 'USD' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer' }}
+                                                    >USD</button>
+                                                    <button
+                                                        onClick={() => { setCurrency('COP'); setBalanceCalculatorValueCOP(0); }}
+                                                        style={{ padding: '6px 16px', borderRadius: '8px', border: 'none', background: currency === 'COP' ? 'var(--bg-primary)' : 'transparent', color: currency === 'COP' ? 'var(--text-primary)' : 'var(--text-secondary)', fontSize: '13px', fontWeight: '600', boxShadow: currency === 'COP' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer' }}
+                                                    >COP</button>
+                                                </div>
+                                                <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                                                    {currency === 'USD' ? `≈ $${(balanceCalculatorValueUSD * exchangeRate).toLocaleString('es-CO')} COP` : `≈ $${(balanceCalculatorValueCOP / exchangeRate).toLocaleString('en-US', { maximumFractionDigits: 2 })} USD`}
+                                                </span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '4px 0' }}>
+                                                <button
+                                                    onClick={() => {
+                                                        setMinusButtonActive(true);
+                                                        const dec = currency === 'USD' ? 10 : 10000;
+                                                        if (currency === 'USD') setBalanceCalculatorValueUSD(p => Math.max(0, p - dec));
+                                                        else setBalanceCalculatorValueCOP(p => Math.max(0, p - dec));
+                                                        setTimeout(() => setMinusButtonActive(false), 200);
+                                                    }}
+                                                    style={{ width: '50px', height: '50px', borderRadius: '50%', border: 'none', background: 'transparent', fontSize: '24px', color: theme === 'dark' ? (minusButtonActive ? '#ff453a' : '#fff') : '#000', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                ><SFMinus size={24} /></button>
+                                                <div style={{ flex: 1, textAlign: 'center' }}>
+                                                    <span style={{ fontSize: '36px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                                                        {currency === 'USD' ? '$' : ''}{(currency === 'USD' ? balanceCalculatorValueUSD : balanceCalculatorValueCOP).toLocaleString(currency === 'USD' ? 'en-US' : 'es-CO')}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        const inc = currency === 'USD' ? 100 : 50000;
+                                                        if (currency === 'USD') setBalanceCalculatorValueUSD(p => p + inc);
+                                                        else setBalanceCalculatorValueCOP(p => p + inc);
+                                                    }}
+                                                    style={{ width: '50px', height: '50px', borderRadius: '50%', border: 'none', background: 'transparent', fontSize: '24px', color: 'var(--ios-blue)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                ><SFPlus size={24} /></button>
+                                            </div>
+                                            <button
+                                                onClick={handleSaveBalanceUpdate}
+                                                disabled={(currency === 'USD' ? balanceCalculatorValueUSD : balanceCalculatorValueCOP) <= 0 || isSaving}
+                                                style={{
+                                                    width: '100%', padding: '10px', borderRadius: '12px',
+                                                    background: isSaving ? 'var(--ios-green)' : 'rgba(255, 255, 255, 0.1)',
+                                                    color: isSaving ? '#fff' : 'var(--text-tertiary)', fontSize: '14px', fontWeight: '600', border: 'none',
+                                                    cursor: (currency === 'USD' ? balanceCalculatorValueUSD : balanceCalculatorValueCOP) > 0 && !isSaving ? 'pointer' : 'not-allowed',
+                                                    opacity: (currency === 'USD' ? balanceCalculatorValueUSD : balanceCalculatorValueCOP) > 0 ? 1 : 0.5,
+                                                }}
+                                            >
+                                                {isSaving ? 'Guardando...' : 'Guardar Inversión'}
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                </motion.div>
+                            </AnimatePresence>
+                        )}
                     </div>
                 </div>
             )}
 
-            {/* Modal de Resumen Financiero Detallado - Sin Scroll, Bien Organizado */}
-            {showInvestmentsModal && (
-                <div 
-                    className="calendar-backdrop" 
-                    onClick={() => setShowInvestmentsModal(false)}
-                    style={{ background: 'rgba(0, 0, 0, 0.3)' }}
-                >
+            {/* Modal de Resumen Financiero Detallado - Full Screen Elegante */}
+            <AnimatePresence>
+                {showInvestmentsModal && (
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="calendar-modal-card"
-                        onClick={(e) => e.stopPropagation()}
-                        style={{ 
-                            maxWidth: '420px', 
-                            width: '90%',
-                            background: 'var(--bg-secondary)',
-                            border: '1px solid var(--glass-border)',
-                            overflow: 'hidden',
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            zIndex: 1000,
+                            background: 'var(--bg-primary)',
                             display: 'flex',
-                            flexDirection: 'column'
+                            flexDirection: 'column',
+                            overflow: 'hidden'
                         }}
                     >
-                        {/* Header compacto */}
+                        {/* Header elegante */}
                         <div style={{ 
                             display: 'flex', 
                             justifyContent: 'space-between', 
                             alignItems: 'center',
-                            padding: '12px 16px',
-                            borderBottom: '1px solid var(--glass-border)'
+                            padding: '20px 24px',
+                            borderBottom: '1px solid var(--glass-border)',
+                            background: 'var(--bg-secondary)'
                         }}>
-                            <h2 style={{ 
-                                margin: 0, 
-                                fontSize: '16px', 
-                                fontWeight: '700',
-                                color: 'var(--text-primary)'
-                            }}>
-                                Resumen Financiero
-                            </h2>
+                            <div>
+                                <h2 style={{ 
+                                    margin: 0, 
+                                    fontSize: '24px', 
+                                    fontWeight: '700',
+                                    color: 'var(--text-primary)',
+                                    marginBottom: '4px'
+                                }}>
+                                    Resumen Financiero
+                                </h2>
+                                <p style={{
+                                    margin: 0,
+                                    fontSize: '14px',
+                                    color: 'var(--text-tertiary)',
+                                    fontWeight: '500'
+                                }}>
+                                    Balance General
+                                </p>
+                            </div>
                             <button
-                                className="icon-button"
                                 onClick={() => setShowInvestmentsModal(false)}
                                 aria-label="Cerrar"
                                 style={{ 
-                                    width: '26px', 
-                                    height: '26px',
-                                    fontSize: '16px'
+                                    width: '36px', 
+                                    height: '36px',
+                                    borderRadius: '10px',
+                                    background: 'rgba(255, 255, 255, 0.05)',
+                                    border: '1px solid var(--glass-border)',
+                                    color: 'var(--text-primary)',
+                                    fontSize: '20px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
                                 }}
                             >
                                 ×
                             </button>
                         </div>
 
-                        {/* Contenido sin scroll - Grid organizado y compacto */}
+                        {/* Contenido con scroll - Diseño elegante y espacioso */}
                         <div style={{ 
                             display: 'flex', 
                             flexDirection: 'column', 
-                            gap: '8px',
-                            padding: '14px',
+                            gap: '24px',
+                            padding: '24px',
                             flex: 1,
-                            overflow: 'hidden'
+                            overflowY: 'auto',
+                            background: 'var(--bg-primary)'
                         }}>
-                            {/* Grid de 2 columnas para ingresos y gastos */}
+                            {/* Grid de 2 columnas para ingresos e inversiones */}
                             <div style={{ 
                                 display: 'grid', 
                                 gridTemplateColumns: '1fr 1fr',
-                                gap: '8px'
+                                gap: '16px'
                             }}>
-                                {/* Ingresos - Compacto y elegante */}
+                                {/* Ingresos - Sin fondo, solo texto y color */}
                                 <div style={{
-                                    padding: '10px',
-                                    borderRadius: '8px',
-                                    background: 'rgba(48, 219, 91, 0.08)',
-                                    border: '1px solid rgba(48, 219, 91, 0.2)',
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    justifyContent: 'space-between',
-                                    minHeight: '80px'
+                                    gap: '10px',
+                                    padding: '0'
                                 }}>
                                     <div style={{ 
                                         display: 'flex', 
                                         alignItems: 'center', 
-                                        gap: '4px',
-                                        marginBottom: '4px'
+                                        gap: '10px'
                                     }}>
-                                        <span style={{ color: 'var(--ios-green)' }}><SFTrendingUp size={14} /></span>
+                                        <span style={{ color: 'var(--ios-green)' }}><SFTrendingUp size={18} /></span>
                                         <span style={{
-                                            fontSize: '8px',
+                                            fontSize: '10px',
                                             fontWeight: '600',
                                             color: 'var(--text-tertiary)',
                                             textTransform: 'uppercase',
-                                            letterSpacing: '0.3px'
+                                            letterSpacing: '0.8px'
                                         }}>
                                             Ingresos
                                         </span>
                                     </div>
                                     <h3 style={{ 
                                         margin: 0, 
-                                        fontSize: '18px', 
+                                        fontSize: '24px', 
                                         fontWeight: '700',
                                         color: 'var(--ios-green)',
-                                        lineHeight: '1.2',
-                                        marginBottom: '2px',
-                                        wordBreak: 'break-word',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
+                                        lineHeight: '1.1'
                                     }}>
                                         ${income.toLocaleString('es-CO')}
                                     </h3>
-                                    <div style={{ 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        gap: '2px',
-                                        marginTop: 'auto',
-                                        paddingTop: '2px'
-                                    }}>
-                                        <span style={{ fontSize: '9px', color: 'var(--ios-green)', fontWeight: '600' }}>↑</span>
-                                        <span style={{ fontSize: '7px', color: 'var(--text-tertiary)', opacity: 0.7, whiteSpace: 'nowrap' }}>
-                                            {new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ fontSize: '14px', color: 'var(--ios-green)', fontWeight: '600' }}>↑</span>
+                                        <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', opacity: 0.8 }}>
+                                            Total acumulado
                                         </span>
                                     </div>
                                 </div>
 
-                                {/* Gastos - Compacto y elegante */}
+                                {/* Inversiones - Sin fondo, solo texto y color */}
                                 <div style={{
-                                    padding: '10px',
-                                    borderRadius: '8px',
-                                    background: 'var(--glass-bg-base)',
-                                    border: '1px solid var(--glass-border)',
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    justifyContent: 'space-between',
-                                    minHeight: '80px'
+                                    gap: '10px',
+                                    padding: '0'
                                 }}>
                                     <div style={{ 
                                         display: 'flex', 
                                         alignItems: 'center', 
-                                        gap: '4px',
-                                        marginBottom: '4px'
+                                        gap: '10px'
                                     }}>
-                                        <span style={{ color: 'var(--ios-red)', opacity: 0.8 }}><SFArrowDownRight size={14} /></span>
+                                        <span style={{ color: 'var(--ios-blue)' }}><SFTrendingUp size={18} /></span>
                                         <span style={{
-                                            fontSize: '8px',
+                                            fontSize: '10px',
                                             fontWeight: '600',
                                             color: 'var(--text-tertiary)',
                                             textTransform: 'uppercase',
-                                            letterSpacing: '0.3px',
-                                            opacity: 0.8
+                                            letterSpacing: '0.8px'
                                         }}>
-                                            Gastos
+                                            Inversiones
                                         </span>
                                     </div>
                                     <h3 style={{ 
                                         margin: 0, 
-                                        fontSize: '18px', 
+                                        fontSize: '24px', 
                                         fontWeight: '700',
-                                        color: 'var(--ios-red)',
-                                        lineHeight: '1.2',
-                                        marginBottom: '2px',
-                                        wordBreak: 'break-word',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
+                                        color: 'var(--ios-blue)',
+                                        lineHeight: '1.1'
                                     }}>
-                                        ${expenses.toLocaleString('es-CO')}
+                                        ${investmentsTotal.toLocaleString('es-CO')}
                                     </h3>
-                                    <div style={{ 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        gap: '2px',
-                                        marginTop: 'auto',
-                                        paddingTop: '2px'
+                                    <span style={{
+                                        fontSize: '10px',
+                                        color: 'var(--text-tertiary)',
+                                        opacity: 0.8
                                     }}>
-                                        <span style={{ fontSize: '9px', color: 'var(--ios-red)', fontWeight: '600' }}>↓</span>
-                                        <span style={{ fontSize: '7px', color: 'var(--text-tertiary)', opacity: 0.7, whiteSpace: 'nowrap' }}>
-                                            {percentUsed}%
-                                        </span>
-                                    </div>
+                                        Total invertido
+                                    </span>
                                 </div>
                             </div>
 
-                            {/* Inversiones - Compacto y destacado */}
-                            <div style={{
-                                padding: '10px',
-                                borderRadius: '8px',
-                                background: 'linear-gradient(135deg, rgba(94, 92, 230, 0.12) 0%, rgba(191, 90, 242, 0.08) 100%)',
-                                border: '1px solid rgba(94, 92, 230, 0.25)',
-                                boxShadow: '0 2px 6px rgba(94, 92, 230, 0.12)'
-                            }}>
+                                {/* Lista de Inversiones Agrupadas - Solo emoji, texto y precio */}
                                 <div style={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'space-between',
-                                    marginBottom: '6px'
-                                }}>
-                                    <div style={{ 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        gap: '6px'
-                                    }}>
-                                        <div style={{
-                                            width: '28px',
-                                            height: '28px',
-                                            borderRadius: '6px',
-                                            background: 'linear-gradient(135deg, rgba(94, 92, 230, 0.3) 0%, rgba(191, 90, 242, 0.3) 100%)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            boxShadow: '0 2px 4px rgba(94, 92, 230, 0.2)',
-                                            flexShrink: 0
-                                        }}>
-                                            <span style={{ color: 'var(--ios-indigo)' }}><SFTrendingUp size={16} /></span>
-                                        </div>
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <p style={{ 
-                                                margin: 0, 
-                                                fontSize: '9px', 
-                                                fontWeight: '600',
-                                                color: 'var(--ios-indigo)',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.3px',
-                                                lineHeight: '1.2'
-                                            }}>
-                                                Inversiones
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <h3 style={{ 
-                                        margin: 0, 
-                                        fontSize: '20px', 
-                                        fontWeight: '700',
-                                        color: 'var(--ios-indigo)',
-                                        lineHeight: '1.1',
-                                        wordBreak: 'break-word',
-                                        whiteSpace: 'nowrap'
-                                    }}>
-                                        $0
-                                    </h3>
-                                </div>
-
-                                {/* Tipos de Inversión - Ultra compacto */}
-                                <div style={{ 
-                                    marginTop: '6px', 
-                                    paddingTop: '6px', 
-                                    borderTop: '1px solid rgba(94, 92, 230, 0.2)',
                                     display: 'grid',
-                                    gridTemplateColumns: '1fr 1fr 1fr',
-                                    gap: '4px'
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                                    gap: '16px',
+                                    marginTop: '8px'
                                 }}>
-                                    <div style={{
-                                        padding: '4px 3px',
-                                        borderRadius: '5px',
-                                        background: 'rgba(94, 92, 230, 0.1)',
-                                        border: '1px solid rgba(94, 92, 230, 0.2)',
-                                        textAlign: 'center'
-                                    }}>
-                                        <span style={{ fontSize: '8px', color: 'var(--text-primary)', fontWeight: '500' }}>Acciones</span>
-                                    </div>
-                                    <div style={{
-                                        padding: '4px 3px',
-                                        borderRadius: '5px',
-                                        background: 'rgba(94, 92, 230, 0.1)',
-                                        border: '1px solid rgba(94, 92, 230, 0.2)',
-                                        textAlign: 'center'
-                                    }}>
-                                        <span style={{ fontSize: '8px', color: 'var(--text-primary)', fontWeight: '500' }}>Fondos</span>
-                                    </div>
-                                    <div style={{
-                                        padding: '4px 3px',
-                                        borderRadius: '5px',
-                                        background: 'rgba(94, 92, 230, 0.1)',
-                                        border: '1px solid rgba(94, 92, 230, 0.2)',
-                                        textAlign: 'center'
-                                    }}>
-                                        <span style={{ fontSize: '8px', color: 'var(--text-primary)', fontWeight: '500' }}>Cripto</span>
-                                    </div>
+                                    {groupedInvestments.length > 0 ? (
+                                        groupedInvestments.map((inv, index) => (
+                                            <div
+                                                key={`${inv.title}-${index}`}
+                                                style={{
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    gap: '8px',
+                                                    padding: '0'
+                                                }}
+                                            >
+                                                <div style={{
+                                                    fontSize: '32px',
+                                                    textAlign: 'center',
+                                                    lineHeight: '1'
+                                                }}>
+                                                    {inv.icon}
+                                                </div>
+                                                <p style={{
+                                                    margin: 0,
+                                                    fontSize: '13px',
+                                                    fontWeight: '600',
+                                                    color: 'var(--text-primary)',
+                                                    textAlign: 'center',
+                                                    lineHeight: '1.3'
+                                                }}>
+                                                    {inv.title}
+                                                </p>
+                                                <p style={{
+                                                    margin: 0,
+                                                    fontSize: '16px',
+                                                    fontWeight: '700',
+                                                    color: 'var(--ios-blue)',
+                                                    textAlign: 'center'
+                                                }}>
+                                                    ${inv.totalAmount.toLocaleString('es-CO')}
+                                                </p>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div style={{
+                                            gridColumn: '1 / -1',
+                                            padding: '24px',
+                                            textAlign: 'center',
+                                            color: 'var(--text-tertiary)',
+                                            fontSize: '14px'
+                                        }}>
+                                            No hay inversiones registradas
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
                         </div>
                     </motion.div>
-                </div>
-            )}
+                )}
+            </AnimatePresence>
         </div>
     );
 };
@@ -1980,6 +2273,7 @@ export const Calendar = () => {
         ? todayHook 
         : new Date();
     // Logs de desarrollo deshabilitados
+    const { theme } = useTheme();
     const [calendarOpen, setCalendarOpen] = useState(false);
     const [tasksOpen, setTasksOpen] = useState(false);
     const [editingTaskInModal, setEditingTaskInModal] = useState<string | null>(null);
@@ -1990,8 +2284,10 @@ export const Calendar = () => {
     const [deleteConfirmModal, setDeleteConfirmModal] = useState<{ type: 'task' | 'event'; id: string } | null>(null);
     const [taskTitle, setTaskTitle] = useState("");
     const [taskDate, setTaskDate] = useState("");
+    const [taskDateIso, setTaskDateIso] = useState("");
     const [taskTime, setTaskTime] = useState("");
     const [taskPriority, setTaskPriority] = useState("Media");
+    const [taskRecurringDays, setTaskRecurringDays] = useState<number[]>([]); // 0=Dom, 1=Lun, ..., 6=Sáb
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [pickerMode, setPickerMode] = useState<"date" | "time" | null>(null);
     const [calendarMode, setCalendarMode] = useState<"calendar" | "event">("calendar");
@@ -2003,7 +2299,100 @@ export const Calendar = () => {
     const [eventTime, setEventTime] = useState("");
     const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
     const [editingEventId, setEditingEventId] = useState<string | null>(null);
+    const [eventsBlockUnlocked, setEventsBlockUnlocked] = useState(false);
+    const [showPinModal, setShowPinModal] = useState(false);
+    const [pinInput, setPinInput] = useState('');
     const { tasks, events, addTask, updateTask, deleteTask, addEvent, updateEvent, deleteEvent } = useAppData();
+
+    // PIN para desbloquear eventos:
+    // - Primera vez: crear PIN (setup) y confirmar (confirm)
+    // - Luego: ingresar PIN (unlock)
+    const [pinMode, setPinMode] = useState<'setup' | 'confirm' | 'unlock'>('unlock');
+    const [pinFirstEntry, setPinFirstEntry] = useState('');
+    // pinError se usa solo para un “flash” visual (sin texto)
+    const [pinError, setPinError] = useState<string | null>(null);
+
+    const getStoredPin = useCallback((): string | null => {
+        try {
+            return localStorage.getItem('events-pin');
+        } catch {
+            return null;
+        }
+    }, []);
+
+    const closePinModal = useCallback(() => {
+        setShowPinModal(false);
+        setPinInput('');
+        setPinFirstEntry('');
+        setPinError(null);
+        setPinMode('unlock');
+    }, []);
+
+    const openPinModalForEvents = useCallback(() => {
+        const stored = getStoredPin();
+        setPinInput('');
+        setPinFirstEntry('');
+        setPinError(null);
+        setPinMode(stored ? 'unlock' : 'setup');
+        setShowPinModal(true);
+    }, [getStoredPin]);
+
+    const processEnteredPin = useCallback((entered: string) => {
+        const stored = getStoredPin();
+
+        if (pinMode === 'unlock') {
+            if (stored && entered === stored) {
+                setEventsBlockUnlocked(true);
+                closePinModal();
+            } else {
+                // error sutil (sin texto en UI)
+                setPinError('1');
+                setPinInput('');
+            }
+            return;
+        }
+
+        if (pinMode === 'setup') {
+            setPinFirstEntry(entered);
+            setPinInput('');
+            setPinError(null);
+            setPinMode('confirm');
+            return;
+        }
+
+        // confirm
+        if (entered === pinFirstEntry && entered.length === 4) {
+            try {
+                localStorage.setItem('events-pin', pinFirstEntry);
+            } catch {
+                // si no hay localStorage, igual desbloqueamos esta sesión
+            }
+            setEventsBlockUnlocked(true);
+            closePinModal();
+        } else {
+            // error sutil (sin texto en UI)
+            setPinError('1');
+            setPinInput('');
+            setPinFirstEntry('');
+            setPinMode('setup');
+        }
+    }, [closePinModal, getStoredPin, pinFirstEntry, pinMode]);
+
+    const handlePinInput = useCallback((digit: string) => {
+        if (pinInput.length >= 4) return;
+        setPinError(null);
+        const next = `${pinInput}${digit}`;
+        setPinInput(next);
+        if (next.length === 4) {
+            // dejar que se pinte el último punto
+            setTimeout(() => processEnteredPin(next), 90);
+        }
+    }, [pinInput, processEnteredPin]);
+
+    const handlePinBackspace = useCallback(() => {
+        setPinError(null);
+        setPinInput(prev => prev.slice(0, -1));
+    }, []);
 
     // Logs de desarrollo deshabilitados para optimizar rendimiento
 
@@ -2133,6 +2522,24 @@ export const Calendar = () => {
             });
     }, [safeEvents, parseDateFromString]);
 
+    /** Hoy solo si la tarea es de hoy; si no, la fecha real (ej. "27 de enero"). */
+    const getTaskMetaDisplay = useCallback((meta: string | undefined, todayStr: string): string => {
+        if (!meta) return 'Sin fecha';
+        const isoMatch = meta.match(/(\d{4}-\d{2}-\d{2})/);
+        const iso = isoMatch?.[1];
+        const parts = meta.split(' · ').map(p => p.trim()).filter(Boolean);
+        const lastIsIso = /^\d{4}-\d{2}-\d{2}$/.test(parts[parts.length - 1] || '');
+        const rest = lastIsIso && parts.length > 1 ? parts.slice(0, -1) : parts;
+        let time = '';
+        if (rest.length >= 2 && /^\d{2}:\d{2}$/.test(rest[0])) time = rest[0];
+        if (!iso) return rest.join(' · ') || meta.replace(/\s·\s\d{4}-\d{2}-\d{2}$/, '').trim() || 'Sin fecha';
+        const isToday = iso === todayStr;
+        const dateObj = parseDateFromString(iso);
+        const dateLabel = isToday ? 'Hoy' : dateObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
+        if (time) return `${time} · ${dateLabel}`;
+        return dateLabel;
+    }, [parseDateFromString]);
+
     // Función para extraer fecha de una tarea desde el campo meta
     const extractTaskDate = useCallback((task: typeof safeTasks[0]): string | null => {
         // Logs de desarrollo deshabilitados para optimizar rendimiento
@@ -2198,16 +2605,28 @@ export const Calendar = () => {
         }
     }, [today, formatDateLocal]);
 
-    // Filtrar tareas por fecha
+    // Filtrar tareas por fecha (incluyendo tareas recurrentes)
     const todayTasks = useMemo(() => {
+        const todayDayOfWeek = today.getDay(); // 0=Dom, 1=Lun, ..., 6=Sáb
+        
         return safeTasks.filter(task => {
             if (!task) return false;
+            
+            // Verificar si es una tarea recurrente
+            const recurringMatch = task.meta?.match(/RECURRING:([0-6,]+)/);
+            if (recurringMatch) {
+                const recurringDays = recurringMatch[1].split(',').map(d => parseInt(d, 10));
+                // Si el día de hoy está en los días recurrentes, incluir la tarea
+                return recurringDays.includes(todayDayOfWeek);
+            }
+            
+            // Tarea normal: verificar por fecha
             const taskDate = extractTaskDate(task);
             // Si no tiene fecha en meta, es de hoy (tareas sin fecha son para hoy)
             // Si contiene "Hoy" o la fecha coincide con hoy, es de hoy
             return !taskDate || taskDate === todayDateString || task.meta?.toLowerCase().includes('hoy');
         });
-    }, [safeTasks, extractTaskDate, todayDateString]);
+    }, [safeTasks, extractTaskDate, todayDateString, today]);
 
     const tomorrowTasks = useMemo(() => {
         return safeTasks.filter(task => {
@@ -2218,8 +2637,45 @@ export const Calendar = () => {
     }, [safeTasks, extractTaskDate, tomorrowDate]);
 
     // Filtrar tareas: pendientes (no completadas) y completadas
-    const pendingTasks = useMemo(() => safeTasks.filter(task => task && !task.completed), [safeTasks]);
-    const completedTasks = useMemo(() => safeTasks.filter(task => task && task.completed), [safeTasks]);
+    // Para tareas recurrentes, solo mostrar las del día actual
+    const pendingTasks = useMemo(() => {
+        const todayDayOfWeek = today.getDay();
+        return safeTasks.filter(task => {
+            if (!task || task.completed) return false;
+            
+            // Verificar si es una tarea recurrente
+            const recurringMatch = task.meta?.match(/RECURRING:([0-6,]+)/);
+            if (recurringMatch) {
+                const recurringDays = recurringMatch[1].split(',').map(d => parseInt(d, 10));
+                // Solo incluir si el día de hoy está en los días recurrentes
+                return recurringDays.includes(todayDayOfWeek);
+            }
+            
+            // Tarea normal: verificar por fecha
+            const taskDate = extractTaskDate(task);
+            // Si no tiene fecha o es de hoy, incluirla
+            return !taskDate || taskDate === todayDateString || task.meta?.toLowerCase().includes('hoy');
+        });
+    }, [safeTasks, today, todayDateString, extractTaskDate]);
+    
+    const completedTasks = useMemo(() => {
+        const todayDayOfWeek = today.getDay();
+        return safeTasks.filter(task => {
+            if (!task || !task.completed) return false;
+            
+            // Verificar si es una tarea recurrente
+            const recurringMatch = task.meta?.match(/RECURRING:([0-6,]+)/);
+            if (recurringMatch) {
+                const recurringDays = recurringMatch[1].split(',').map(d => parseInt(d, 10));
+                // Solo incluir si el día de hoy está en los días recurrentes
+                return recurringDays.includes(todayDayOfWeek);
+            }
+            
+            // Tarea normal: verificar por fecha
+            const taskDate = extractTaskDate(task);
+            return taskDate === todayDateString || task.meta?.toLowerCase().includes('hoy');
+        });
+    }, [safeTasks, today, todayDateString, extractTaskDate]);
     
     // Calcular promedio de tareas por día
     const tasksPerDayAverage = useMemo(() => {
@@ -2245,10 +2701,33 @@ export const Calendar = () => {
         return totalDays > 0 ? Number((totalTasks / totalDays).toFixed(1)) : 0;
     }, [completedTasks, extractTaskDate]);
     
-    // Filtrar tareas de hoy: pendientes y completadas
+    // Filtrar tareas de hoy: pendientes y completadas (para listados; incluye sin fecha)
     const pendingTodayTasks = useMemo(() => todayTasks.filter(task => task && !task.completed), [todayTasks]);
     const completedTodayTasks = useMemo(() => todayTasks.filter(task => task && task.completed), [todayTasks]);
-    
+
+    // Solo tareas con fecha explícita = hoy. Para el progreso de hoy que se reanuda cada día.
+    // Incluir tareas recurrentes que coincidan con el día de hoy.
+    const todayTasksForProgress = useMemo(() => {
+        const todayDayOfWeek = today.getDay();
+        return safeTasks.filter(task => {
+            if (!task?.meta) return false;
+            
+            // Verificar si es una tarea recurrente
+            const recurringMatch = task.meta.match(/RECURRING:([0-6,]+)/);
+            if (recurringMatch) {
+                const recurringDays = recurringMatch[1].split(',').map(d => parseInt(d, 10));
+                return recurringDays.includes(todayDayOfWeek);
+            }
+            
+            // Tarea normal: verificar por fecha explícita
+            const hasExplicitDate = /\d{4}-\d{2}-\d{2}/.test(task.meta);
+            if (!hasExplicitDate) return false;
+            const d = extractTaskDate(task);
+            return d === todayDateString;
+        });
+    }, [safeTasks, extractTaskDate, todayDateString, today]);
+    const pendingTodayForProgress = useMemo(() => todayTasksForProgress.filter(t => !t.completed), [todayTasksForProgress]);
+    const completedTodayForProgress = useMemo(() => todayTasksForProgress.filter(t => t.completed), [todayTasksForProgress]);
     
     const visibleTasks = useMemo(() => pendingTasks.slice(0, 3), [pendingTasks]);
     
@@ -2261,147 +2740,34 @@ export const Calendar = () => {
     // Separar contadores: tareas y eventos son independientes
     const totalTodayCount = useMemo(() => pendingTodayCount, [pendingTodayCount]); // Solo tareas
     
-    // Determinar el estado del progreso: 'today', 'tomorrow', 'general'
-    const progressState = useMemo(() => {
-        try {
-            // Solo contar tareas, no eventos
-            const totalToday = totalTodayCount + completedTodayCount;
-            const hasTodayTasks = totalToday > 0;
-            const allTodayCompleted = totalToday > 0 && (pendingTodayCount === 0);
-            
-            // Obtener todas las fechas únicas de tareas pendientes (excluyendo hoy)
-            const uniqueDates = new Set<string>();
-            const futureDates = new Set<string>();
-            
-            pendingTasks.forEach(task => {
-                try {
-                    const taskDate = extractTaskDate(task);
-                    if (taskDate && taskDate !== todayDateString) {
-                        uniqueDates.add(taskDate);
-                        // Verificar si la fecha es futura (más allá de mañana)
-                        const taskDateObj = new Date(taskDate);
-                        const tomorrowObj = new Date(tomorrowDate);
-                        if (taskDateObj > tomorrowObj) {
-                            futureDates.add(taskDate);
-                        }
-                    }
-                } catch (error) {
-                }
-            });
-            
-            // Si hay tareas para fechas futuras (más allá de mañana), mostrar progreso general
-            if (futureDates.size > 0 || uniqueDates.size > 1) {
-                return 'general';
-            }
-            
-            // Si no hay tareas para hoy
-            if (!hasTodayTasks) {
-                // Verificar si hay tareas para mañana
-                const hasTomorrowTasks = tomorrowTasks.length > 0;
-                if (hasTomorrowTasks) {
-                    return 'tomorrow';
-                }
-            }
-            
-            // Si todas las tareas de hoy están completadas
-            if (allTodayCompleted) {
-                // Verificar si hay tareas pendientes para mañana u otros días
-                const hasTomorrowTasks = tomorrowTasks.length > 0;
-                
-                // Si solo hay tareas para mañana
-                if (hasTomorrowTasks && uniqueDates.size === 1 && uniqueDates.has(tomorrowDate)) {
-                    return 'tomorrow';
-                }
-                // Si hay tareas para mañana (aunque no haya pendientes, puede haber completadas)
-                // pero solo si hay tareas pendientes para mañana
-                if (hasTomorrowTasks && tomorrowTasks.some(t => !t.completed)) {
-                    return 'tomorrow';
-                }
-            }
-            
-            // Por defecto, mostrar progreso de hoy
-            return 'today';
-        } catch (error) {
-            return 'today';
-        }
-    }, [totalTodayCount, completedTodayCount, pendingTodayCount, pendingTasks, extractTaskDate, todayDateString, tomorrowDate, tomorrowTasks]);
-    
-    // Calcular progreso con useMemo para que se actualice automáticamente (solo tareas, no eventos)
+    // Progreso de hoy: se reanuda cada día. Solo tareas con fecha = hoy; si ninguna, 0%.
+    // Tareas y eventos siguen guardados; solo cambia qué cuenta para la barra.
     const progressData = useMemo(() => {
-        if (progressState === 'today') {
-            const total = totalTodayCount + completedTodayCount;
-            const completed = completedTodayCount;
-            if (total === 0) {
-                return { 
-                    percentage: 0, 
-                    percentageText: '0% completado', 
-                    allCompleted: false,
-                    label: 'Progreso de hoy',
-                    state: 'today'
-                };
-            }
-            const percentage = Math.round((completed / total) * 100);
-            const allCompleted = total > 0 && completed === total;
-            return { 
-                percentage, 
-                percentageText: allCompleted ? '100% completado' : `${percentage}% completado`,
-                total,
-                completed,
-                allCompleted,
+        const total = pendingTodayForProgress.length + completedTodayForProgress.length;
+        const completed = completedTodayForProgress.length;
+        if (total === 0) {
+            return {
+                percentage: 0,
+                percentageText: '0% completado',
+                total: 0,
+                completed: 0,
+                allCompleted: false,
                 label: 'Progreso de hoy',
-                state: 'today'
-            };
-        } else if (progressState === 'tomorrow') {
-            const tomorrowPending = tomorrowTasks.filter(t => !t.completed).length;
-            const tomorrowCompleted = tomorrowTasks.filter(t => t.completed).length;
-            const total = tomorrowPending + tomorrowCompleted;
-            const completed = tomorrowCompleted;
-            if (total === 0) {
-                return {
-                    percentage: 0,
-                    percentageText: '0% completado',
-                    allCompleted: false,
-                    label: 'Progreso de mañana',
-                    state: 'tomorrow'
-                };
-            }
-            const percentage = Math.round((completed / total) * 100);
-            return {
-                percentage,
-                percentageText: `${percentage}% completado`,
-                total,
-                completed,
-                allCompleted: false,
-                label: 'Progreso de mañana',
-                state: 'tomorrow'
-            };
-        } else {
-            // Progreso general: calcular sobre todas las tareas pendientes
-            const totalPending = pendingTasks.length;
-            const totalCompleted = completedTasks.length;
-            const total = totalPending + totalCompleted;
-            const completed = totalCompleted;
-            if (total === 0) {
-                return {
-                    percentage: 0,
-                    percentageText: '0% completado',
-                    allCompleted: false,
-                    label: 'Progreso general',
-                    state: 'general'
-                };
-            }
-            const percentage = Math.round((completed / total) * 100);
-            return {
-                percentage,
-                percentageText: `${percentage}% completado`,
-                total,
-                completed,
-                allCompleted: false,
-                label: 'Progreso general',
-                state: 'general'
+                state: 'today' as const
             };
         }
-    }, [progressState, totalTodayCount, completedTodayCount, tomorrowTasks, pendingTasks, completedTasks]);
+        const percentage = Math.round((completed / total) * 100);
+        const allCompleted = completed === total;
+        return {
+            percentage,
+            percentageText: allCompleted ? '100% completado' : `${percentage}% completado`,
+            total,
+            completed,
+            allCompleted,
+            label: 'Progreso de hoy',
+            state: 'today' as const
+        };
+    }, [pendingTodayForProgress.length, completedTodayForProgress.length]);
     const dayStatusDate = useMemo(() => {
         try {
             if (!today || !(today instanceof Date) || isNaN(today.getTime())) {
@@ -2652,76 +3018,91 @@ export const Calendar = () => {
             return;
         }
 
-        // Si no hay fecha seleccionada, usar la fecha de hoy por defecto
-        let dateToUse: Date = selectedDate || today;
-        let formattedDate = taskDate;
-        
-        // Si no hay fecha formateada ni selectedDate, usar la fecha de hoy
-        if (!formattedDate && !selectedDate) {
-            formattedDate = today.toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "");
-            dateToUse = today;
-        } else if (!formattedDate && selectedDate) {
-            formattedDate = selectedDate.toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "");
-            dateToUse = selectedDate;
-        } else if (formattedDate && !selectedDate) {
-            // Si hay fecha formateada pero no selectedDate, usar today para verificar si es hoy
-            dateToUse = today;
-        }
+        const dateToUse: Date = taskDateIso ? parseDateFromString(taskDateIso) : today;
+        const formattedDate = dateToUse.toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "");
 
         // Determinar si es "hoy"
         const isToday = dateToUse.getDate() === today.getDate() &&
             dateToUse.getMonth() === today.getMonth() &&
             dateToUse.getFullYear() === today.getFullYear();
 
-        // Formatear meta: si hay hora, mostrar "hora · fecha", si no, mostrar "Hoy - fecha" o solo "fecha"
-        let meta = "";
-        if (taskTime) {
-            if (isToday) {
-                meta = `${taskTime} · Hoy`;
+        const isoDate = formatDateLocal(dateToUse);
+        
+        // Si hay días recurrentes seleccionados, crear una sola tarea con patrón de recurrencia
+        if (taskRecurringDays.length > 0) {
+            // Formatear meta con días recurrentes: hora · RECURRING:0,1,2 · YYYY-MM-DD (fecha base)
+            let meta = "";
+            const daysStr = taskRecurringDays.sort((a, b) => a - b).join(',');
+            if (taskTime) {
+                meta = `${taskTime} · RECURRING:${daysStr} · ${isoDate}`;
             } else {
-                meta = `${taskTime} · ${formattedDate}`;
+                meta = `RECURRING:${daysStr} · ${isoDate}`;
             }
-        } else if (isToday) {
-            meta = `Hoy - ${formattedDate}`;
+            
+            if (editingTaskId) {
+                updateTask(editingTaskId, {
+                    title: taskTitle.trim(),
+                    meta: meta,
+                    priority: taskPriority || "Media"
+                });
+            } else {
+                addTask({
+                    title: taskTitle.trim(),
+                    meta: meta,
+                    priority: taskPriority || "Media"
+                });
+            }
         } else {
-            meta = formattedDate;
-        }
+            // Tarea normal (sin recurrencia)
+            let meta = "";
+            if (taskTime) {
+                if (isToday) {
+                    meta = `${taskTime} · Hoy · ${isoDate}`;
+                } else {
+                    meta = `${taskTime} · ${formattedDate} · ${isoDate}`;
+                }
+            } else if (isToday) {
+                meta = `Hoy - ${formattedDate} · ${isoDate}`;
+            } else {
+                meta = `${formattedDate} · ${isoDate}`;
+            }
 
-        if (editingTaskId) {
-            updateTask(editingTaskId, {
-                title: taskTitle.trim(),
-                meta: meta,
-                priority: taskPriority || "Media"
-            });
-        } else {
-            addTask({
-                title: taskTitle.trim(),
-                meta: meta,
-                priority: taskPriority || "Media"
-            });
+            if (editingTaskId) {
+                updateTask(editingTaskId, {
+                    title: taskTitle.trim(),
+                    meta: meta,
+                    priority: taskPriority || "Media"
+                });
+            } else {
+                addTask({
+                    title: taskTitle.trim(),
+                    meta: meta,
+                    priority: taskPriority || "Media"
+                });
+            }
         }
 
         setEditingTaskId(null);
         setTaskTitle("");
         setTaskDate("");
+        setTaskDateIso("");
         setTaskTime("");
         setTaskPriority("Media");
+        setTaskRecurringDays([]);
         setPickerMode(null);
         setSelectedDate(null);
         setShowTaskForm(false);
-        
-        // Si estamos editando en el modal, cerrar el modo de edición
-        if (editingTaskInModal) {
-            setEditingTaskInModal(null);
-        }
+        if (editingTaskInModal) setEditingTaskInModal(null);
     };
 
     const handleOpenTaskForm = () => {
         setEditingTaskId(null);
         setTaskTitle("");
         setTaskDate("");
+        setTaskDateIso("");
         setTaskTime("");
         setTaskPriority("Media");
+        setTaskRecurringDays([]);
         setPickerMode(null);
         setSelectedDate(null);
         setShowTaskForm(true);
@@ -2827,39 +3208,40 @@ export const Calendar = () => {
         setEditingTaskId(id);
         setTaskTitle(task.title);
         
-        // Parsear meta para extraer fecha y hora
+        // Parsear meta: "hora · fecha · YYYY-MM-DD" o "Hoy - fecha · YYYY-MM-DD" o "fecha · YYYY-MM-DD"
         const meta = task.meta || "";
         let parsedDate = "";
         let parsedTime = "";
-        
-        if (meta.includes(" · ")) {
-            // Formato: "hora · fecha" o "hoy - fecha"
-            const parts = meta.split(" · ");
-            if (parts.length === 2) {
-                // Verificar si la primera parte es una hora (formato HH:MM)
-                if (/^\d{2}:\d{2}$/.test(parts[0].trim())) {
-                    parsedTime = parts[0].trim();
-                    parsedDate = parts[1].trim();
-                } else {
-                    parsedDate = parts[0].trim();
-                }
-            }
-        } else if (meta.includes(" - ")) {
-            // Formato: "hoy - fecha"
-            const parts = meta.split(" - ");
-            if (parts.length === 2) {
-                parsedDate = parts[1].trim();
-            }
-        } else if (meta && meta !== "Sin fecha") {
-            // Solo fecha
-            parsedDate = meta.trim();
+        let dateForPicker: Date | null = null;
+        const parts = meta.split(" · ").map(p => p.trim()).filter(Boolean);
+        const lastPart = parts[parts.length - 1];
+        const isIso = /^\d{4}-\d{2}-\d{2}$/.test(lastPart || "");
+        const displayParts = isIso && parts.length > 1 ? parts.slice(0, -1) : parts;
+
+        if (displayParts.length >= 2 && /^\d{2}:\d{2}$/.test(displayParts[0])) {
+            parsedTime = displayParts[0];
+            parsedDate = displayParts[1];
+        } else if (displayParts.length >= 1) {
+            parsedDate = displayParts[0];
         }
-        
+        if (meta.includes(" - ")) {
+            const [_, afterDash] = meta.split(" - ");
+            if (afterDash) {
+                const beforeIso = afterDash.split(" · ")[0]?.trim() || "";
+                if (beforeIso) parsedDate = beforeIso;
+            }
+        }
+        if (isIso && lastPart) {
+            dateForPicker = parseDateFromString(lastPart);
+        }
+
         setTaskDate(parsedDate);
         setTaskTime(parsedTime);
+        setTaskDateIso(isIso && lastPart ? lastPart : "");
         setTaskPriority(task.priority || "Media");
         setPickerMode(null);
-        setSelectedDate(null);
+        if (dateForPicker) setSelectedDate(dateForPicker);
+        else setSelectedDate(null);
         setShowTaskForm(true);
     };
 
@@ -2881,21 +3263,31 @@ export const Calendar = () => {
         setCalendarOpen(true);
     };
 
+    const ROW_RADIUS = 12;
+
     const StaticCompletedTaskItem = ({
-        task
+        task,
+        isFirst,
+        isLast,
+        isOnly
     }: {
         task: { id: string; title: string; meta: string; priority: string; completed?: boolean };
+        isFirst?: boolean;
+        isLast?: boolean;
+        isOnly?: boolean;
     }) => {
+        const radius = isOnly ? ROW_RADIUS : isFirst ? `${ROW_RADIUS}px ${ROW_RADIUS}px 0 0` : isLast ? `0 0 ${ROW_RADIUS}px ${ROW_RADIUS}px` : 0;
         return (
             <div
                 className="list-item"
                 style={{
                     padding: '12px',
-                    borderBottom: '1px solid var(--glass-border)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.03)'
+                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                    borderRadius: radius,
+                    overflow: 'hidden'
                 }}
             >
                 <div className="list-icon" style={{ backgroundColor: 'transparent', color: 'var(--ios-green)' }}>
@@ -2903,7 +3295,7 @@ export const Calendar = () => {
                 </div>
                 <div className="list-content">
                     <p style={{ textDecoration: 'none', color: 'var(--text-primary)', fontWeight: '500' }}>{task.title}</p>
-                    <span style={{ color: 'var(--text-tertiary)' }}>{task.meta}</span>
+                    <span style={{ color: 'var(--text-tertiary)' }}>{getTaskMetaDisplay(task.meta, todayDateString)}</span>
                 </div>
                 <span className="list-time" style={{ color: 'var(--text-tertiary)' }}>{task.priority}</span>
             </div>
@@ -2911,9 +3303,15 @@ export const Calendar = () => {
     };
 
     const StaticCompletedEventItem = ({
-        event
+        event,
+        isFirst,
+        isLast,
+        isOnly
     }: {
         event: { id: string; title: string; meta: string; time: string; event_date?: string };
+        isFirst?: boolean;
+        isLast?: boolean;
+        isOnly?: boolean;
     }) => {
         let formattedDate = '';
         try {
@@ -2932,16 +3330,18 @@ export const Calendar = () => {
             formattedDate = event.event_date || '';
         }
 
+        const radius = isOnly ? ROW_RADIUS : isFirst ? `${ROW_RADIUS}px ${ROW_RADIUS}px 0 0` : isLast ? `0 0 ${ROW_RADIUS}px ${ROW_RADIUS}px` : 0;
         return (
             <div
                 className="list-item"
                 style={{
                     padding: '12px',
-                    borderBottom: '1px solid var(--glass-border)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '12px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.03)'
+                    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                    borderRadius: radius,
+                    overflow: 'hidden'
                 }}
             >
                 <div style={{
@@ -3128,7 +3528,7 @@ export const Calendar = () => {
                     </button>
                     <div className="list-content">
                         <p>{task?.title || 'Sin título'}</p>
-                        <span>{task?.meta || 'Sin fecha'}</span>
+                        <span>{getTaskMetaDisplay(task?.meta, todayDateString)}</span>
                     </div>
                     <span 
                         className="list-time" 
@@ -3255,23 +3655,19 @@ export const Calendar = () => {
                         </div>
                     </div>
                     
-                    {/* Calcular si todas las tareas de hoy están completadas (solo tareas, no eventos) */}
+                    {/* Progreso de hoy: se reanuda cada día. Solo tareas con fecha = hoy. */}
                     {(() => {
-                        const totalToday = totalTodayCount + completedTodayCount;
-                        const allTodayCompleted = totalToday > 0 && (pendingTodayCount === 0);
-                        
                         return (
                             <>
-                                {/* Bloque: Progreso de hoy (siempre visible, pero compacto cuando está completo) */}
                                 <div 
-                                    className={`hero-card ${allTodayCompleted ? 'hero-card-compact' : ''}`}
+                                    className={`hero-card ${progressData.allCompleted ? 'hero-card-compact' : ''}`}
                                     style={{ 
                                         cursor: 'pointer',
                                         transition: 'opacity 0.2s ease'
                                     }}
                                     onClick={() => {
                                         setProgressModalOpen(true);
-                                        setCompletedModalFilter('events'); // Resetear filtro a eventos por defecto
+                                        setCompletedModalFilter('events');
                                     }}
                                     onMouseEnter={(e) => {
                                         e.currentTarget.style.opacity = '0.8';
@@ -3283,40 +3679,18 @@ export const Calendar = () => {
                                     <div className="hero-header">
                                         <div>
                                             <p className="hero-eyebrow">Progreso de hoy</p>
-                                            <h2 className="hero-title">
-                                                {progressData.state === 'today' ? progressData.percentageText : '100% completado'}
-                                            </h2>
-                                            {allTodayCompleted ? (
-                                                null
-                                            ) : (completedTodayCount > 0) ? (
-                                                <div style={{ 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
-                                                    gap: '8px',
-                                                    flexWrap: 'wrap',
-                                                    marginTop: '8px'
-                                                }}>
-                                                    {completedTodayCount > 0 && (
-                                                        <div style={{ 
-                                                            display: 'flex', 
-                                                            alignItems: 'center', 
-                                                            gap: '6px',
-                                                            color: 'var(--text-secondary)',
-                                                            fontSize: '13px'
-                                                        }}>
-                                                            <SFCheckCircle size={14} className="text-[var(--ios-green)]" />
-                                                            <span style={{ fontWeight: '500' }}>
-                                                                {completedTodayCount} {completedTodayCount === 1 ? 'tarea completada' : 'tareas completadas'}
-                                                            </span>
-                                                        </div>
-                                                    )}
+                                            <h2 className="hero-title">{progressData.percentageText}</h2>
+                                            {progressData.allCompleted ? null : progressData.completed > 0 ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                                                        <SFCheckCircle size={14} className="text-[var(--ios-green)]" />
+                                                        <span style={{ fontWeight: '500' }}>
+                                                            {progressData.completed} {progressData.completed === 1 ? 'tarea completada' : 'tareas completadas'}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             ) : (
-                                                <p style={{ 
-                                                    color: 'var(--text-tertiary)', 
-                                                    fontSize: '13px', 
-                                                    margin: '8px 0 0 0' 
-                                                }}>
+                                                <p style={{ color: 'var(--text-tertiary)', fontSize: '13px', margin: '8px 0 0 0' }}>
                                                     Aún no hay tareas completadas hoy
                                                 </p>
                                             )}
@@ -3325,11 +3699,7 @@ export const Calendar = () => {
                                     <div className="hero-progress">
                                         <div 
                                             className="hero-progress-bar" 
-                                            style={{ 
-                                                width: `${progressData.state === 'today' ? progressData.percentage : 100}%`,
-                                                backgroundColor: 'var(--ios-green)',
-                                                transition: 'width 0.3s ease'
-                                            }} 
+                                            style={{ width: `${progressData.percentage}%`, backgroundColor: 'var(--ios-green)', transition: 'width 0.3s ease' }} 
                                         />
                                     </div>
                                 </div>
@@ -3340,74 +3710,211 @@ export const Calendar = () => {
 
                 {/* Eventos */}
                 <section className="app-section">
-                    <div className="hero-card">
-                        <div className="hero-header">
-                            <div>
-                                <p className="hero-eyebrow">Eventos</p>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                    <h2 className="hero-title">
-                                        {eventsCount} {eventsCount === 1 ? 'evento' : 'eventos'}
-                                    </h2>
+                    <div className="hero-card" style={{ position: 'relative', overflow: 'hidden' }}>
+                        <div
+                            style={{
+                                filter: eventsBlockUnlocked ? 'none' : 'blur(12px)',
+                                pointerEvents: eventsBlockUnlocked ? 'auto' : 'none',
+                                userSelect: eventsBlockUnlocked ? 'auto' : 'none',
+                                WebkitUserSelect: eventsBlockUnlocked ? 'auto' : 'none',
+                                transition: 'filter 0.3s ease'
+                            }}
+                        >
+                            <div className="hero-header">
+                                <div>
+                                    <p className="hero-eyebrow">Eventos</p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                        <h2 className="hero-title">
+                                            {eventsCount} {eventsCount === 1 ? 'evento' : 'eventos'}
+                                        </h2>
+                                    </div>
                                 </div>
+                                <button
+                                    className="hero-icon"
+                                    aria-label="Abrir calendario"
+                                    onClick={() => setCalendarOpen(true)}
+                                    style={{ cursor: 'pointer' }}
+                                >
+                                    <SFCalendar size={18} />
+                                </button>
                             </div>
-                            <button
-                                className="hero-icon-button"
-                                aria-label="Abrir calendario"
-                                onClick={() => setCalendarOpen(true)}
-                            >
-                                <SFCalendar size={18} />
-                            </button>
-                        </div>
-                        {eventsCount > 0 ? (
-                            <div className="day-event-list horizontal">
-                                {allUpcomingEvents.filter(event => event && event.id).map((event) => (
-                                    <div 
-                                        key={event.id}
-                                        className="day-event-item horizontal"
-                                        style={{ 
-                                            cursor: 'default',
-                                            userSelect: 'none',
-                                            WebkitUserSelect: 'none'
-                                        }}
-                                    >
-                                        <div className="day-event-badge">
-                                            {event?.event_date ? (() => {
-                                                const eventDate = parseDateFromString(event.event_date);
-                                                return eventDate.getDate();
-                                            })() : ((today && today instanceof Date && !isNaN(today.getTime())) ? today.getDate() : new Date().getDate())}
-                                        </div>
-                                        <div className="day-event-info">
-                                            <span className="day-event-title">{event?.title || 'Sin título'}</span>
-                                            <span className="day-event-meta">
+                            {eventsCount > 0 ? (
+                                <div className="day-event-list horizontal">
+                                    {allUpcomingEvents.filter(event => event && event.id).map((event) => (
+                                        <div 
+                                            key={event.id}
+                                            className="day-event-item horizontal"
+                                            style={{ 
+                                                cursor: 'default',
+                                                userSelect: 'none',
+                                                WebkitUserSelect: 'none'
+                                            }}
+                                        >
+                                            <div className="day-event-badge">
                                                 {event?.event_date ? (() => {
                                                     const eventDate = parseDateFromString(event.event_date);
-                                                    const isToday = formatDateLocal(eventDate) === todayDateString;
-                                                    if (isToday) {
-                                                        return event?.meta || 'Sin descripción';
-                                                    } else {
-                                                        const dateLabel = eventDate.toLocaleDateString("es-ES", {
-                                                            day: "numeric",
-                                                            month: "short"
-                                                        });
-                                                        const meta = event?.meta ? ` · ${event.meta}` : '';
-                                                        return `${dateLabel}${meta}`;
-                                                    }
-                                                })() : (event?.meta || 'Sin descripción')}
-                                            </span>
-                                            <span className="day-event-time-range">{event?.time || 'Sin hora'}</span>
+                                                    return eventDate.getDate();
+                                                })() : ((today && today instanceof Date && !isNaN(today.getTime())) ? today.getDate() : new Date().getDate())}
+                                            </div>
+                                            <div className="day-event-info">
+                                                <span className="day-event-title">{event?.title || 'Sin título'}</span>
+                                                <span className="day-event-meta">
+                                                    {event?.event_date ? (() => {
+                                                        const eventDate = parseDateFromString(event.event_date);
+                                                        const isToday = formatDateLocal(eventDate) === todayDateString;
+                                                        if (isToday) {
+                                                            return event?.meta || 'Sin descripción';
+                                                        } else {
+                                                            const dateLabel = eventDate.toLocaleDateString("es-ES", {
+                                                                day: "numeric",
+                                                                month: "short"
+                                                            });
+                                                            const meta = event?.meta ? ` · ${event.meta}` : '';
+                                                            return `${dateLabel}${meta}`;
+                                                        }
+                                                    })() : (event?.meta || 'Sin descripción')}
+                                                </span>
+                                                <span className="day-event-time-range">{event?.time || 'Sin hora'}</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
+                            ) : (
+                                <p style={{ 
+                                    color: 'var(--text-tertiary)', 
+                                    fontSize: '13px', 
+                                    margin: '12px 0 0 0',
+                                    padding: '0 4px'
+                                }}>
+                                    No hay eventos programados para hoy
+                                </p>
+                            )}
+                        </div>
+                        {!eventsBlockUnlocked && (
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: theme === 'light' ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.25)',
+                                    backdropFilter: 'blur(10px)',
+                                    WebkitBackdropFilter: 'blur(10px)',
+                                    zIndex: 10,
+                                    pointerEvents: 'auto',
+                                    transition: 'opacity 0.25s var(--ease-ios-out)'
+                                }}
+                                onClick={() => {
+                                    // Si está abierto el PIN inline, tocar afuera lo cierra
+                                    if (showPinModal) closePinModal();
+                                }}
+                            >
+                                <AnimatePresence initial={false} mode="wait">
+                                    {!showPinModal ? (
+                                        <motion.button
+                                            key="lock"
+                                            type="button"
+                                            aria-label="Desbloquear con PIN"
+                                            onClick={(e) => { e.stopPropagation(); openPinModalForEvents(); }}
+                                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPinModalForEvents(); } }}
+                                            className="faceid-lock-button"
+                                            initial={{ opacity: 0, scale: 0.96, y: 2 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.96, y: 2 }}
+                                            transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+                                            style={{
+                                                transition: 'transform 0.2s var(--ease-ios-out), opacity 0.2s var(--ease-ios-out)'
+                                            }}
+                                        >
+                                            <span className="faceid-lock-button-icon">
+                                                <SFLock size={28} />
+                                            </span>
+                                        </motion.button>
+                                    ) : (
+                                        <motion.div
+                                            key="pin"
+                                            initial={{ opacity: 0, scale: 0.98, y: 4 }}
+                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                            exit={{ opacity: 0, scale: 0.98, y: 4 }}
+                                            transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            style={{
+                                                width: 'min(260px, 90%)',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                padding: '2px 0',
+                                                // sin “tarjeta”: todo integrado sobre el blur
+                                                background: 'transparent'
+                                            }}
+                                        >
+                                            {/* Barra de texto (input) que abre teclado del iPhone */}
+                                            <input
+                                                className="events-pin-input"
+                                                type="tel"
+                                                inputMode="numeric"
+                                                pattern="[0-9]*"
+                                                maxLength={4}
+                                                autoFocus
+                                                value={pinInput}
+                                                onChange={(e) => {
+                                                    // Mantener solo dígitos y máximo 4
+                                                    const cleaned = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                                    setPinError(null);
+                                                    setPinInput(cleaned);
+                                                    if (cleaned.length === 4) {
+                                                        setTimeout(() => processEnteredPin(cleaned), 60);
+                                                    }
+                                                }}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Escape') {
+                                                        e.preventDefault();
+                                                        closePinModal();
+                                                    }
+                                                }}
+                                                placeholder={
+                                                    pinMode === 'setup'
+                                                        ? 'Registra tu código'
+                                                        : pinMode === 'confirm'
+                                                            ? 'Confirma tu código'
+                                                            : ''
+                                                }
+                                                aria-label="PIN de 4 dígitos"
+                                                style={{
+                                                    width: '100%',
+                                                    height: '34px',
+                                                    borderRadius: '999px',
+                                                    border: `1px solid ${
+                                                        pinError
+                                                            ? 'rgba(255, 69, 58, 0.55)'
+                                                            : theme === 'light'
+                                                                ? 'rgba(0,0,0,0.10)'
+                                                                : 'rgba(255,255,255,0.12)'
+                                                    }`,
+                                                    background: theme === 'light'
+                                                        ? 'rgba(255,255,255,0.20)'
+                                                        : 'rgba(0,0,0,0.18)',
+                                                    color: 'var(--text-primary)',
+                                                    fontSize: '13px',
+                                                    fontWeight: '700',
+                                                    fontFamily: 'inherit',
+                                                    textAlign: 'center',
+                                                    outline: 'none',
+                                                    caretColor: 'var(--ios-blue)',
+                                                    letterSpacing: '4px',
+                                                    padding: '0',
+                                                    lineHeight: '34px',
+                                                    backdropFilter: 'blur(10px)',
+                                                    WebkitBackdropFilter: 'blur(10px)',
+                                                    transition: 'border-color 0.18s var(--ease-ios-out), background 0.18s var(--ease-ios-out)'
+                                                }}
+                                            />
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
-                        ) : (
-                            <p style={{ 
-                                color: 'var(--text-tertiary)', 
-                                fontSize: '13px', 
-                                margin: '12px 0 0 0',
-                                padding: '0 4px'
-                            }}>
-                                No hay eventos programados para hoy
-                            </p>
                         )}
                     </div>
                 </section>
@@ -3458,35 +3965,102 @@ export const Calendar = () => {
                             />
                             <div className="task-form-row">
                                 <div className="task-picker">
-                                    <button
-                                        type="button"
-                                        className={clsx(
-                                            "task-input",
-                                            "task-input-button",
-                                            !taskDate && !selectedDate && "task-input-placeholder"
-                                        )}
-                                        onClick={() => {
-                                            setPickerMode("date");
-                                        }}
-                                    >
-                                        {taskDate || (selectedDate ? selectedDate.toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "") : "Fecha (opcional)")}
-                                    </button>
+                                    <DatePicker
+                                        value={taskDateIso}
+                                        onChange={setTaskDateIso}
+                                        placeholder="Fecha (opcional)"
+                                        taskStyle={true}
+                                    />
                                 </div>
                                 <div className="task-picker">
-                                    <select
-                                        className="task-input"
-                                        value={taskTime}
-                                        onChange={(event) => setTaskTime(event.target.value)}
-                                    >
-                                        <option value="">Hora</option>
-                                        {timeSlots.map((slot) => (
-                                            <option key={slot} value={slot}>
-                                                {slot}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <TimeSelect value={taskTime} onChange={setTaskTime} placeholder="Hora" />
                                 </div>
                             </div>
+                            
+                            {/* Selector de días recurrentes */}
+                            <div style={{ marginBottom: '12px' }}>
+                                <div style={{ 
+                                    fontSize: '12px', 
+                                    fontWeight: '600', 
+                                    color: 'var(--text-secondary)', 
+                                    marginBottom: '8px',
+                                    padding: '0 4px'
+                                }}>
+                                    Repetir en días específicos (opcional)
+                                </div>
+                                <div style={{
+                                    display: 'flex',
+                                    gap: '8px',
+                                    flexWrap: 'wrap'
+                                }}>
+                                    {[
+                                        { label: 'D', value: 0, full: 'Dom' },
+                                        { label: 'L', value: 1, full: 'Lun' },
+                                        { label: 'M', value: 2, full: 'Mar' },
+                                        { label: 'X', value: 3, full: 'Mié' },
+                                        { label: 'J', value: 4, full: 'Jue' },
+                                        { label: 'V', value: 5, full: 'Vie' },
+                                        { label: 'S', value: 6, full: 'Sáb' }
+                                    ].map((day) => {
+                                        const isSelected = taskRecurringDays.includes(day.value);
+                                        return (
+                                            <button
+                                                key={day.value}
+                                                type="button"
+                                                onClick={() => {
+                                                    if (isSelected) {
+                                                        setTaskRecurringDays(prev => prev.filter(d => d !== day.value));
+                                                    } else {
+                                                        setTaskRecurringDays(prev => [...prev, day.value]);
+                                                    }
+                                                }}
+                                                style={{
+                                                    minWidth: '40px',
+                                                    height: '40px',
+                                                    borderRadius: '10px',
+                                                    border: `1.5px solid ${isSelected ? 'var(--ios-blue)' : 'var(--glass-border)'}`,
+                                                    background: isSelected 
+                                                        ? (theme === 'light' ? 'rgba(41, 151, 255, 0.15)' : 'rgba(41, 151, 255, 0.25)')
+                                                        : (theme === 'light' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.05)'),
+                                                    color: isSelected ? 'var(--ios-blue)' : 'var(--text-primary)',
+                                                    fontSize: '14px',
+                                                    fontWeight: isSelected ? '600' : '500',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s var(--ease-ios-out)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    flex: 1,
+                                                    maxWidth: '48px'
+                                                }}
+                                                onMouseDown={(e) => {
+                                                    e.currentTarget.style.transform = 'scale(0.95)';
+                                                }}
+                                                onMouseUp={(e) => {
+                                                    e.currentTarget.style.transform = 'scale(1)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.transform = 'scale(1)';
+                                                }}
+                                                title={day.full}
+                                            >
+                                                {day.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                {taskRecurringDays.length > 0 && (
+                                    <div style={{
+                                        fontSize: '11px',
+                                        color: 'var(--text-tertiary)',
+                                        marginTop: '6px',
+                                        padding: '0 4px'
+                                    }}>
+                                        La tarea aparecerá todos los {taskRecurringDays.sort((a, b) => a - b).map(d => ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][d]).join(', ')}
+                                    </div>
+                                )}
+                            </div>
+                            
                             <div className="task-form-row">
                                 <select
                                     className="task-input"
@@ -3744,25 +4318,18 @@ export const Calendar = () => {
                                                 </div>
                                             )}
                                             <div className="event-form-card task-form-card">
-                                                <div className="event-date-label" style={{ 
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    gap: '8px'
-                                                }}>
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                                                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                                                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                                                    </svg>
-                                                    <span>
-                                                        {eventDate.toLocaleDateString("es-ES", {
-                                                            weekday: "long",
-                                                            day: "numeric",
-                                                            month: "long"
-                                                        })}
-                                                    </span>
+                                                <div className="task-form-row">
+                                                    <div className="task-picker">
+                                                        <DatePicker
+                                                            value={eventDate ? formatDateLocal(eventDate) : ''}
+                                                            onChange={(v) => setEventDate(parseDateFromString(v))}
+                                                            placeholder="Fecha"
+                                                            taskStyle={true}
+                                                        />
+                                                    </div>
+                                                    <div className="task-picker">
+                                                        <TimeSelect value={eventTime} onChange={setEventTime} placeholder="Hora" />
+                                                    </div>
                                                 </div>
                                                 <input
                                                     className="task-input"
@@ -3776,19 +4343,6 @@ export const Calendar = () => {
                                                     value={eventDescription}
                                                     onChange={(event) => setEventDescription(event.target.value)}
                                                 />
-                                                <select
-                                                    className="task-input"
-                                                    value={eventTime}
-                                                    onChange={(event) => setEventTime(event.target.value)}
-                                                    style={{ width: '100%' }}
-                                                >
-                                                    <option value="">Hora</option>
-                                                    {timeSlots.map((slot) => (
-                                                        <option key={slot} value={slot}>
-                                                            {slot}
-                                                        </option>
-                                                    ))}
-                                                </select>
                                                 <div className="event-actions">
                                                     <button 
                                                         type="button"
@@ -4060,23 +4614,19 @@ export const Calendar = () => {
                                                 const groups: { [key: string]: typeof completedTasks } = {};
                                                 completedTasks.forEach(task => {
                                                     let dateObj: Date | null = null;
-                                                    // Intentar extraer fecha de meta
                                                     if (task.meta) {
-                                                        if (task.meta.includes('Hoy')) {
-                                                            dateObj = today;
+                                                        const isoMatch = task.meta.match(/(\d{4}-\d{2}-\d{2})/);
+                                                        const iso = isoMatch?.[1];
+                                                        if (iso) {
+                                                            dateObj = parseDateFromString(iso);
                                                         } else {
-                                                            // Intentar parsear fecha simple
                                                             const dateStr = extractTaskDate(task);
-                                                            if (dateStr) {
-                                                                dateObj = parseDateFromString(dateStr);
-                                                            }
+                                                            if (dateStr) dateObj = parseDateFromString(dateStr);
                                                         }
                                                     }
-                                                    
-                                                    const monthKey = dateObj && !isNaN(dateObj.getTime()) 
+                                                    const monthKey = dateObj && !isNaN(dateObj.getTime())
                                                         ? dateObj.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
                                                         : 'Sin fecha';
-                                                        
                                                     if (!groups[monthKey]) groups[monthKey] = [];
                                                     groups[monthKey].push(task);
                                                 });
@@ -4094,12 +4644,17 @@ export const Calendar = () => {
                                                         }}>
                                                             {month}
                                                         </h5>
-                                                        <div className="list-card" style={{ gap: 0, overflow: 'hidden' }}>
-                                                            {tasks.map((task, index) => (
-                                                                <div key={task.id} style={{ borderBottom: index === tasks.length - 1 ? 'none' : '1px solid var(--glass-border)' }}>
-                                                                    <StaticCompletedTaskItem task={task} />
-                                                                </div>
-                                                            ))}
+                                                        <div className="list-card" style={{ gap: '8px', overflow: 'hidden', padding: 0 }}>
+                                                            {tasks.map((task, index) => {
+                                                                const isFirst = index === 0;
+                                                                const isLast = index === tasks.length - 1;
+                                                                const isOnly = tasks.length === 1;
+                                                                return (
+                                                                    <div key={task.id} style={{ overflow: 'hidden' }}>
+                                                                        <StaticCompletedTaskItem task={task} isFirst={isFirst} isLast={isLast} isOnly={isOnly} />
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
                                                 ));
@@ -4145,12 +4700,17 @@ export const Calendar = () => {
                                                         }}>
                                                             {month}
                                                         </h5>
-                                                        <div className="list-card" style={{ gap: 0, overflow: 'hidden' }}>
-                                                            {events.map((event, index) => (
-                                                                <div key={event.id} style={{ borderBottom: index === events.length - 1 ? 'none' : '1px solid var(--glass-border)' }}>
-                                                                    <StaticCompletedEventItem event={event} />
-                                                                </div>
-                                                            ))}
+                                                        <div className="list-card" style={{ gap: '8px', overflow: 'hidden', padding: 0 }}>
+                                                            {events.map((event, index) => {
+                                                                const isFirst = index === 0;
+                                                                const isLast = index === events.length - 1;
+                                                                const isOnly = events.length === 1;
+                                                                return (
+                                                                    <div key={event.id} style={{ overflow: 'hidden' }}>
+                                                                        <StaticCompletedEventItem event={event} isFirst={isFirst} isLast={isLast} isOnly={isOnly} />
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
                                                 ));
@@ -4182,6 +4742,7 @@ export const Calendar = () => {
                             setEditingTaskId(null);
                             setTaskTitle("");
                             setTaskDate("");
+                            setTaskDateIso("");
                             setTaskTime("");
                             setTaskPriority("Media");
                             setPickerMode(null);
@@ -4206,6 +4767,7 @@ export const Calendar = () => {
                                             setEditingTaskId(null);
                                             setTaskTitle("");
                                             setTaskDate("");
+                                            setTaskDateIso("");
                                             setTaskTime("");
                                             setTaskPriority("Media");
                                             setPickerMode(null);
@@ -4224,33 +4786,15 @@ export const Calendar = () => {
                                     />
                                     <div className="task-form-row">
                                         <div className="task-picker">
-                                            <button
-                                                type="button"
-                                                className={clsx(
-                                                    "task-input",
-                                                    "task-input-button",
-                                                    !taskDate && !selectedDate && "task-input-placeholder"
-                                                )}
-                                                onClick={() => {
-                                                    setPickerMode("date");
-                                                }}
-                                            >
-                                                {taskDate || (selectedDate ? selectedDate.toLocaleDateString("es-ES", { day: "numeric", month: "short" }).replace(".", "") : "Fecha (opcional)")}
-                                            </button>
+                                            <DatePicker
+                                                value={taskDateIso}
+                                                onChange={setTaskDateIso}
+                                                placeholder="Fecha (opcional)"
+                                                taskStyle={true}
+                                            />
                                         </div>
                                         <div className="task-picker">
-                                            <select
-                                                className="task-input"
-                                                value={taskTime}
-                                                onChange={(event) => setTaskTime(event.target.value)}
-                                            >
-                                                <option value="">Hora</option>
-                                                {timeSlots.map((slot) => (
-                                                    <option key={slot} value={slot}>
-                                                        {slot}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            <TimeSelect value={taskTime} onChange={setTaskTime} placeholder="Hora" />
                                         </div>
                                     </div>
                                     <div className="task-form-row">
@@ -4481,6 +5025,8 @@ export const Calendar = () => {
                     </div>
                 </div>
             )}
+
+            {/* PIN inline se renderiza dentro del overlay de Eventos */}
         </div>
     );
 };

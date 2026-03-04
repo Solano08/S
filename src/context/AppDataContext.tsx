@@ -9,6 +9,7 @@ type Task = {
     meta: string;
     priority: string;
     completed?: boolean;
+    created_at?: string;
 };
 
 type Transaction = {
@@ -53,6 +54,19 @@ type Project = {
     created_at?: string;
 };
 
+type GoalPriority = 'Alta' | 'Media' | 'Baja';
+
+type Goal = {
+    id: string;
+    name: string;
+    target: number; // Meta en USD o COP
+    current_amount: number; // Dinero actual ahorrado (siempre comienza en 0)
+    target_date: string; // YYYY-MM-DD
+    priority: GoalPriority;
+    position: number; // Posición dentro de la prioridad
+    created_at?: string;
+};
+
 type AppDataContextValue = {
     balance: number;
     income: number;
@@ -62,6 +76,7 @@ type AppDataContextValue = {
     events: Event[];
     habits: Habit[];
     projects: Project[];
+    goals: Goal[];
     addTask: (task: Omit<Task, 'id'>) => void;
     updateTask: (id: string, updates: Partial<Omit<Task, 'id'>>) => void;
     deleteTask: (id: string) => void;
@@ -76,6 +91,10 @@ type AppDataContextValue = {
     updateProject: (id: string, updates: Partial<Omit<Project, 'id'>>) => void;
     deleteProject: (id: string) => void;
     addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+    addGoal: (goal: Omit<Goal, 'id' | 'position'>) => void;
+    updateGoal: (id: string, updates: Partial<Omit<Goal, 'id'>>) => void;
+    deleteGoal: (id: string) => void;
+    reorderGoals: (priority: GoalPriority, goalIds: string[]) => void;
 };
 
 const AppDataContext = createContext<AppDataContextValue | undefined>(undefined);
@@ -88,13 +107,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const [events, setEvents] = useState<Event[]>([]);
     const [habits, setHabits] = useState<Habit[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
-    const [balance, setBalance] = useState(880000); // Valor por defecto
-    const [income, setIncome] = useState(1100000); // Valor por defecto
-    const [expenses, setExpenses] = useState(229900); // Valor por defecto
+    const [goals, setGoals] = useState<Goal[]>([]);
+    const [balance, setBalance] = useState(0); // Valor por defecto - reseteado
+    const [income, setIncome] = useState(0); // Valor por defecto - reseteado
+    const [expenses, setExpenses] = useState(0); // Valor por defecto - reseteado
     
     const loadDataRef = useRef<(() => Promise<void>) | null>(null);
-    // Rastrear cambios recientes para evitar que las suscripciones de tiempo real los sobrescriban
+    const overviewIdRef = useRef<string | null>(null);
     const recentUpdatesRef = useRef<Map<string, { completed?: boolean; timestamp: number }>>(new Map());
+    const migratingTasksRef = useRef(false);
 
     // Cargar datos del caché primero (para carga instantánea) - useEffect independiente
     useEffect(() => {
@@ -155,12 +176,30 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                     .limit(1);
 
                 if (!overviewData || overviewData.length === 0) {
-                    // Insertar datos iniciales
+                    // Insertar datos iniciales (reseteados a 0)
                     await supabase.from('app_overview').insert({
-                        balance: 880000,
-                        income: 1100000,
-                        expenses: 229900
+                        balance: 0,
+                        income: 0,
+                        expenses: 0
                     });
+                } else {
+                    // Actualizar los valores existentes a 0 para resetear finanzas
+                    const { data: existingOverview } = await supabase
+                        .from('app_overview')
+                        .select('id')
+                        .order('updated_at', { ascending: false })
+                        .limit(1)
+                        .single();
+                    
+                    if (existingOverview) {
+                        await supabase.from('app_overview')
+                            .update({
+                                balance: 0,
+                                income: 0,
+                                expenses: 0
+                            })
+                            .eq('id', existingOverview.id);
+                    }
                 }
             } catch (error) {
                 console.warn('No se pudieron inicializar los datos automáticamente:', error);
@@ -170,10 +209,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         if (!supabase) {
             console.warn("Supabase no está configurado. Usando datos locales. Revisa VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY.");
             console.warn("Para PWA: Asegúrate de que las variables de entorno estén disponibles en el build de producción.");
-            // Valores por defecto cuando Supabase no está configurado
-            setBalance(880000);
-            setIncome(1100000);
-            setExpenses(229900);
+            // Valores por defecto cuando Supabase no está configurado (reseteados a 0)
+            setBalance(0);
+            setIncome(0);
+            setExpenses(0);
+            setTransactions([]);
+            setGoals([]);
+            // Mantener datos de tareas, eventos, hábitos y proyectos intactos
+            // Datos de ejemplo deshabilitados - código comentado para evitar errores de sintaxis
+            /*
             setTransactions([
                 { id: "tx-1", title: "Ingreso 15 de enero", category: "Ingreso", amount: 1100000 },
                 { id: "tx-2", title: "Transmilenio", category: "Transporte", amount: -6000 },
@@ -185,6 +229,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                 { id: "task-2", title: "Mandado de mi mamá", meta: "Hoy · Comprar carne", priority: "Media" },
                 { id: "task-3", title: "Enviar mensaje a Westcol", meta: "18:00 · Hoy", priority: "Baja" }
             ]);
+            */
             return;
         }
 
@@ -205,7 +250,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                     supabase.from('events').select('*').order('event_date', { ascending: true }),
                     supabase.from('app_overview').select('*').order('updated_at', { ascending: false }).limit(1),
                     supabase.from('habits').select('*').order('category', { ascending: true }).order('position', { ascending: true }),
-                    supabase.from('projects').select('*').order('created_at', { ascending: false })
+                    supabase.from('projects').select('*').order('created_at', { ascending: false }),
+                    supabase.from('goals').select('*').order('created_at', { ascending: false })
                 ]);
 
                 // Usar timeout para no bloquear - si tarda más de 5 segundos, usar valores por defecto
@@ -217,7 +263,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                     return; // Mantener valores por defecto ya establecidos
                 }
 
-                const [tasksResult, transactionsResult, eventsResult, overviewResult, habitsResult, projectsResult] = results as Array<any>;
+                const [tasksResult, transactionsResult, eventsResult, overviewResult, habitsResult, projectsResult, goalsResult] = results as Array<any>;
 
                 if (!active) return;
 
@@ -236,8 +282,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                                 title: item.title ?? "",
                                 meta: item.meta ?? "",
                                 priority: item.priority ?? "Media",
-                                // Preservar el valor local de completed si existe, sino usar el de Supabase
-                                completed: prevTask?.completed !== undefined ? prevTask.completed : Boolean(item.completed ?? false)
+                                completed: prevTask?.completed !== undefined ? prevTask.completed : Boolean(item.completed ?? false),
+                                created_at: item.created_at
                             };
                         });
                     });
@@ -246,15 +292,20 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                 if (transactionsResult.error) {
                     console.error("Error cargando transacciones:", transactionsResult.error);
                 } else {
+                    // Resetear transacciones - empezar desde cero
                     const loadedTransactions = transactionsResult.data ?? [];
-                    setTransactions(
-                        loadedTransactions.map((item: any) => ({
-                            id: String(item.id),
-                            title: item.title ?? "",
-                            category: item.category ?? "",
-                            amount: Number(item.amount ?? 0)
-                        }))
-                    );
+                    // Limpiar todas las transacciones de la BD para empezar desde cero
+                    if (loadedTransactions.length > 0 && supabase) {
+                        try {
+                            const { error: deleteError } = await supabase.from('transactions').delete().neq('id', '');
+                            if (deleteError) {
+                                console.warn('No se pudieron limpiar las transacciones:', deleteError);
+                            }
+                        } catch (error) {
+                            console.warn('No se pudieron limpiar las transacciones:', error);
+                        }
+                    }
+                    setTransactions([]);
                 }
 
                 if (eventsResult.error) {
@@ -338,27 +389,46 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                     );
                 }
 
+                if (goalsResult.error) {
+                    const errorCode = goalsResult.error?.code;
+                    const errorMessage = goalsResult.error?.message || '';
+                    
+                    if (errorCode === 'PGRST205' || errorMessage.includes('Could not find the table')) {
+                        console.warn("⚠️ La tabla 'goals' no existe en Supabase. Se creará automáticamente al agregar el primer objetivo");
+                    } else {
+                        console.error("Error cargando objetivos:", goalsResult.error);
+                    }
+                    setGoals([]);
+                } else {
+                    const loadedGoals = goalsResult.data ?? [];
+                    setGoals(
+                        loadedGoals.map((item: any) => ({
+                            id: String(item.id),
+                            name: item.name ?? "",
+                            target: Number(item.target ?? 0),
+                            current_amount: Number(item.current_amount ?? 0),
+                            target_date: item.target_date ?? "",
+                            priority: (item.priority ?? 'Media') as GoalPriority,
+                            position: Number(item.position ?? 0),
+                            created_at: item.created_at
+                        }))
+                    );
+                }
+
                 if (overviewResult.error) {
                     console.error("Error cargando resumen:", overviewResult.error);
                     // Mantener valores actuales si hay error (no sobrescribir con 0)
                 } else {
                     const overview = overviewResult.data?.[0];
                     if (overview) {
+                        overviewIdRef.current = overview.id ?? null;
                         const newBalance = Number(overview.balance ?? 0);
                         const newIncome = Number(overview.income ?? 0);
                         const newExpenses = Number(overview.expenses ?? 0);
-                        // Solo actualizar si los valores son válidos (no 0 a menos que realmente sea 0)
-                        if (newBalance !== 0 || overview.balance === 0) {
-                            setBalance(newBalance);
-                        }
-                        if (newIncome !== 0 || overview.income === 0) {
-                            setIncome(newIncome);
-                        }
-                        if (newExpenses !== 0 || overview.expenses === 0) {
-                            setExpenses(newExpenses);
-                        }
+                        if (newBalance !== 0 || overview.balance === 0) setBalance(newBalance);
+                        if (newIncome !== 0 || overview.income === 0) setIncome(newIncome);
+                        if (newExpenses !== 0 || overview.expenses === 0) setExpenses(newExpenses);
                     }
-                    // Si no hay overview, mantener los valores por defecto ya establecidos
                 }
             } catch (error) {
                 console.error("Error inesperado cargando datos:", error);
@@ -903,6 +973,35 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
+    // Migrar tareas antiguas: añadir · YYYY-MM-DD a meta si no existe (solo con created_at)
+    useEffect(() => {
+        if (!tasks.length || migratingTasksRef.current) return;
+        const needs = tasks.find((t) => t.created_at && !/\d{4}-\d{2}-\d{2}/.test((t.meta ?? '').trim()));
+        if (!needs) return;
+        migratingTasksRef.current = true;
+        const monthMap: Record<string, string> = { ene: '01', feb: '02', mar: '03', abr: '04', may: '05', jun: '06', jul: '07', ago: '08', sep: '09', oct: '10', nov: '11', dic: '12' };
+        (async () => {
+            try {
+                const meta = (needs.meta ?? '').trim();
+                const created = new Date(needs.created_at!);
+                const y = created.getFullYear();
+                const m = String(created.getMonth() + 1).padStart(2, '0');
+                const d = String(created.getDate()).padStart(2, '0');
+                let iso = `${y}-${m}-${d}`;
+                const short = meta.match(/(\d{1,2})\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)/i);
+                if (short) {
+                    const day = short[1].padStart(2, '0');
+                    const month = monthMap[short[2].toLowerCase()] ?? m;
+                    iso = `${y}-${month}-${day}`;
+                }
+                const newMeta = meta ? `${meta} · ${iso}` : iso;
+                await updateTask(needs.id, { meta: newMeta });
+            } finally {
+                migratingTasksRef.current = false;
+            }
+        })();
+    }, [tasks, updateTask]);
+
     const deleteTask = useCallback(async (id: string) => {
         // Guardar tarea para revertir si falla
         let deletedTask: Task | undefined;
@@ -1416,8 +1515,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                 return prev;
             }
             
-            // #region agent log
-            
             console.log('✅ Proyecto encontrado en estado:', {
                 id: project.id,
                 currentTitle: project.title,
@@ -1537,8 +1634,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                         return p;
                     });
                     
-                    // #region agent log
-                    
                     console.log('✅ Estado actualizado con datos de Supabase. Total proyectos:', updated.length);
                     return updated;
                 });
@@ -1594,15 +1689,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    const addTransaction = useCallback((transaction: Omit<Transaction, 'id'>) => {
-        const newTransaction: Transaction = {
+    const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id'>) => {
+        const newTransactionLocal: Transaction = {
             id: `transaction-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             ...transaction
         };
         
-        setTransactions((prev) => [newTransaction, ...prev]);
-        
-        // Actualizar balance, income y expenses según el tipo de transacción
+        setTransactions((prev) => [newTransactionLocal, ...prev]);
         if (transaction.amount > 0) {
             setIncome((prev) => prev + transaction.amount);
             setBalance((prev) => prev + transaction.amount);
@@ -1610,7 +1703,248 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             setExpenses((prev) => prev + Math.abs(transaction.amount));
             setBalance((prev) => prev + transaction.amount);
         }
-    }, []);
+        
+        const revert = () => {
+            setTransactions((prev) => prev.filter((t) => t.id !== newTransactionLocal.id));
+            if (transaction.amount > 0) {
+                setIncome((prev) => prev - transaction.amount);
+                setBalance((prev) => prev - transaction.amount);
+            } else {
+                setExpenses((prev) => prev - Math.abs(transaction.amount));
+                setBalance((prev) => prev - transaction.amount);
+            }
+        };
+
+        if (!supabase) return;
+
+        const newBalance = balance + transaction.amount;
+        const newIncome = transaction.amount > 0 ? income + transaction.amount : income;
+        const newExpenses = transaction.amount < 0 ? expenses + Math.abs(transaction.amount) : expenses;
+
+        try {
+            const { data, error } = await supabase
+                .from('transactions')
+                .insert({
+                    title: transaction.title,
+                    category: transaction.category,
+                    amount: transaction.amount
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error("Error guardando transacción:", error);
+                revert();
+                return;
+            }
+
+            if (data) {
+                setTransactions((prev) =>
+                    prev.map((t) =>
+                        t.id === newTransactionLocal.id
+                            ? {
+                                  id: String(data.id),
+                                  title: data.title ?? transaction.title,
+                                  category: data.category ?? transaction.category,
+                                  amount: Number(data.amount ?? transaction.amount)
+                              }
+                            : t
+                    )
+                );
+            }
+
+            let oid = overviewIdRef.current;
+            if (!oid) {
+                const { data: ov } = await supabase.from('app_overview').select('id').order('updated_at', { ascending: false }).limit(1).single();
+                oid = (ov as { id?: string } | null)?.id ?? null;
+                if (oid) overviewIdRef.current = oid;
+            }
+            if (oid) {
+                const { error: overviewErr } = await supabase.from('app_overview').update({
+                    balance: newBalance,
+                    income: newIncome,
+                    expenses: newExpenses
+                }).eq('id', oid);
+                if (overviewErr) console.error("Error actualizando app_overview:", overviewErr);
+            }
+        } catch (error) {
+            console.error("Error inesperado guardando transacción:", error);
+            revert();
+        }
+    }, [supabase, balance, income, expenses]);
+
+    const addGoal = useCallback(async (goal: Omit<Goal, 'id' | 'position' | 'current_amount'>) => {
+        // Calcular position: siguiente posición en la prioridad
+        let newPosition = 0;
+        setGoals((prev) => {
+            const priorityGoals = prev.filter(g => g.priority === goal.priority);
+            const maxPosition = priorityGoals.reduce((max, g) => Math.max(max, g.position || 0), -1);
+            newPosition = maxPosition + 1;
+            return prev;
+        });
+
+        const newGoalLocal: Goal = {
+            id: `goal-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            ...goal,
+            current_amount: 0, // Siempre comienza en 0
+            position: newPosition
+        };
+        
+        setGoals((prev) => [...prev, newGoalLocal]);
+
+        if (!supabase) {
+            return;
+        }
+
+        try {
+            const { data, error } = await supabase
+                .from('goals')
+                .insert({
+                    name: goal.name,
+                    target: goal.target,
+                    current_amount: 0, // Siempre comienza en 0
+                    target_date: goal.target_date,
+                    priority: goal.priority,
+                    position: newPosition
+                })
+                .select()
+                .single();
+
+            if (error) {
+                console.error("Error guardando objetivo:", error);
+                setGoals((prev) => prev.filter((g) => g.id !== newGoalLocal.id));
+                return;
+            }
+
+            if (data) {
+                setGoals((prev) =>
+                    prev.map((g) =>
+                        g.id === newGoalLocal.id
+                            ? {
+                                  id: String(data.id),
+                                  name: data.name ?? goal.name,
+                                  target: Number(data.target ?? goal.target),
+                                  current_amount: Number(data.current_amount ?? 0),
+                                  target_date: data.target_date ?? goal.target_date,
+                                  priority: (data.priority ?? goal.priority) as GoalPriority,
+                                  position: Number(data.position ?? newPosition),
+                                  created_at: data.created_at
+                              }
+                            : g
+                    )
+                );
+            }
+        } catch (error) {
+            console.error("Error inesperado guardando objetivo:", error);
+            setGoals((prev) => prev.filter((g) => g.id !== newGoalLocal.id));
+        }
+    }, [supabase]);
+
+    const updateGoal = useCallback(async (id: string, updates: Partial<Omit<Goal, 'id'>>) => {
+        if (!id) {
+            return;
+        }
+        
+        const previousGoal = goals.find((g) => g && g.id === id);
+        
+        setGoals((prev) =>
+            prev.map((g) => (g && g.id === id ? { ...g, ...updates } : g))
+        );
+
+        if (!supabase) {
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('goals')
+                .update(updates)
+                .eq('id', id);
+
+            if (error) {
+                console.error("Error actualizando objetivo:", error);
+                if (previousGoal) {
+                    setGoals((prev) =>
+                        prev.map((g) => (g && g.id === id ? previousGoal : g))
+                    );
+                }
+            }
+        } catch (error) {
+            console.error("Error inesperado actualizando objetivo:", error);
+            if (previousGoal) {
+                setGoals((prev) =>
+                    prev.map((g) => (g && g.id === id ? previousGoal : g))
+                );
+            }
+        }
+    }, [supabase, goals]);
+
+    const deleteGoal = useCallback(async (id: string) => {
+        let deletedGoal: Goal | undefined;
+        setGoals((prev) => {
+            const goal = prev.find((g) => g.id === id);
+            deletedGoal = goal;
+            return prev.filter((g) => g.id !== id);
+        });
+
+        if (!supabase) {
+            return;
+        }
+
+        try {
+            const { error } = await supabase.from('goals').delete().eq('id', id);
+            if (error) {
+                console.error("Error eliminando objetivo:", error);
+                if (deletedGoal) {
+                    setGoals((prev) => [...prev, deletedGoal!]);
+                }
+                return;
+            }
+        } catch (error) {
+            console.error("Error inesperado eliminando objetivo:", error);
+            if (deletedGoal) {
+                setGoals((prev) => [...prev, deletedGoal!]);
+            }
+        }
+    }, [supabase]);
+
+    const reorderGoals = useCallback(async (priority: GoalPriority, goalIds: string[]) => {
+        // Actualizar positions localmente
+        setGoals((prev) => {
+            const updated = prev.map((goal) => {
+                if (goal.priority === priority) {
+                    const newIndex = goalIds.indexOf(goal.id);
+                    if (newIndex !== -1) {
+                        return { ...goal, position: newIndex };
+                    }
+                }
+                return goal;
+            });
+            return updated;
+        });
+
+        if (!supabase) {
+            return;
+        }
+
+        // Actualizar positions en la base de datos
+        try {
+            const updates = goalIds.map((goalId, index) => ({
+                id: goalId,
+                position: index
+            }));
+
+            // Actualizar cada objetivo
+            for (const update of updates) {
+                await supabase
+                    .from('goals')
+                    .update({ position: update.position })
+                    .eq('id', update.id);
+            }
+        } catch (error) {
+            console.error("Error inesperado reordenando objetivos:", error);
+        }
+    }, [supabase]);
 
     const value = useMemo(
         () => ({
@@ -1622,6 +1956,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             events,
             habits,
             projects,
+            goals,
             addTask,
             updateTask,
             deleteTask,
@@ -1635,13 +1970,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             addProject,
             updateProject,
             deleteProject,
-            addTransaction
+            addTransaction,
+            addGoal,
+            updateGoal,
+            deleteGoal,
+            reorderGoals
         }),
-        [addEvent, addTask, addHabit, addProject, addTransaction, balance, deleteEvent, deleteTask, deleteHabit, deleteProject, events, expenses, habits, income, projects, tasks, transactions, updateEvent, updateTask, updateHabit, updateProject, reorderHabits]
+        [addEvent, addTask, addHabit, addProject, addTransaction, balance, deleteEvent, deleteTask, deleteHabit, deleteProject, events, expenses, habits, income, projects, tasks, transactions, updateEvent, updateTask, updateHabit, updateProject, reorderHabits, goals, addGoal, updateGoal, deleteGoal, reorderGoals]
     );
 
-    // #region agent log
-    
     try {
         return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
     } catch (error) {
