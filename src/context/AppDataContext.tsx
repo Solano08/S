@@ -12,11 +12,12 @@ type Task = {
     created_at?: string;
 };
 
-type Transaction = {
+export type Transaction = {
     id: string;
     title: string;
     category: string;
     amount: number;
+    created_at?: string;
 };
 
 type Event = {
@@ -90,7 +91,8 @@ type AppDataContextValue = {
     addProject: (project: Omit<Project, 'id'>) => void;
     updateProject: (id: string, updates: Partial<Omit<Project, 'id'>>) => void;
     deleteProject: (id: string) => void;
-    addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+    addTransaction: (transaction: Omit<Transaction, 'id' | 'created_at'>) => void;
+    updateTransaction: (id: string, updates: Partial<Pick<Transaction, 'title'>>) => void;
     addGoal: (goal: Omit<Goal, 'id' | 'position'>) => void;
     updateGoal: (id: string, updates: Partial<Omit<Goal, 'id'>>) => void;
     deleteGoal: (id: string) => void;
@@ -290,7 +292,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                             id: String(item.id),
                             title: item.title ?? "",
                             category: item.category ?? "",
-                            amount: Number(item.amount ?? 0)
+                            amount: Number(item.amount ?? 0),
+                            created_at: item.created_at ? String(item.created_at) : undefined
                         }))
                     );
                 }
@@ -1548,10 +1551,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         }
     }, []);
 
-    const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id'>) => {
+    const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'created_at'>) => {
         const newTransactionLocal: Transaction = {
             id: `transaction-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            ...transaction
+            ...transaction,
+            created_at: new Date().toISOString()
         };
         
         setTransactions((prev) => [newTransactionLocal, ...prev]);
@@ -1605,7 +1609,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                                   id: String(data.id),
                                   title: data.title ?? transaction.title,
                                   category: data.category ?? transaction.category,
-                                  amount: Number(data.amount ?? transaction.amount)
+                                  amount: Number(data.amount ?? transaction.amount),
+                                  created_at: data.created_at
+                                      ? String(data.created_at)
+                                      : newTransactionLocal.created_at
                               }
                             : t
                     )
@@ -1631,6 +1638,41 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             revert();
         }
     }, [supabase, balance, income, expenses]);
+
+    const updateTransaction = useCallback(
+        async (id: string, updates: Partial<Pick<Transaction, 'title'>>) => {
+            const nextTitle = updates.title?.trim();
+            if (!nextTitle) return;
+
+            let previousTitle: string | null = null;
+            setTransactions((prevList) => {
+                const t = prevList.find((x) => x.id === id);
+                if (!t || t.title === nextTitle) return prevList;
+                previousTitle = t.title;
+                return prevList.map((x) => (x.id === id ? { ...x, title: nextTitle } : x));
+            });
+
+            if (previousTitle === null) return;
+
+            if (!supabase) return;
+
+            try {
+                const { error } = await supabase.from('transactions').update({ title: nextTitle }).eq('id', id);
+                if (error) {
+                    console.error('Error actualizando transacción:', error);
+                    setTransactions((prevList) =>
+                        prevList.map((x) => (x.id === id ? { ...x, title: previousTitle! } : x))
+                    );
+                }
+            } catch (err) {
+                console.error('Error inesperado actualizando transacción:', err);
+                setTransactions((prevList) =>
+                    prevList.map((x) => (x.id === id ? { ...x, title: previousTitle! } : x))
+                );
+            }
+        },
+        [supabase]
+    );
 
     const addGoal = useCallback(async (goal: Omit<Goal, 'id' | 'position' | 'current_amount'>) => {
         // Calcular position: siguiente posición en la prioridad
@@ -1830,12 +1872,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             updateProject,
             deleteProject,
             addTransaction,
+            updateTransaction,
             addGoal,
             updateGoal,
             deleteGoal,
             reorderGoals
         }),
-        [addEvent, addTask, addHabit, addProject, addTransaction, balance, deleteEvent, deleteTask, deleteHabit, deleteProject, events, expenses, habits, income, projects, tasks, transactions, updateEvent, updateTask, updateHabit, updateProject, reorderHabits, goals, addGoal, updateGoal, deleteGoal, reorderGoals]
+        [addEvent, addTask, addHabit, addProject, addTransaction, updateTransaction, balance, deleteEvent, deleteTask, deleteHabit, deleteProject, events, expenses, habits, income, projects, tasks, transactions, updateEvent, updateTask, updateHabit, updateProject, reorderHabits, goals, addGoal, updateGoal, deleteGoal, reorderGoals]
     );
 
     try {

@@ -934,6 +934,186 @@ button:active, a:active, [role="button"]:active {
   opacity: 0.85;
 }
 
+/* Hábitos (Ideas): bloque no negociables */
+.habits-non-negotiable-card {
+  padding-bottom: 16px;
+}
+
+.habits-non-negotiable-card::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 20px;
+  bottom: 20px;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    var(--ios-blue),
+    rgba(88, 86, 214, 0.75)
+  );
+  pointer-events: none;
+  opacity: 0.95;
+}
+
+.habits-non-negotiable-header {
+  align-items: flex-start;
+}
+
+.habits-non-negotiable-heading {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
+  flex: 1;
+  padding-left: 10px;
+}
+
+.habits-non-negotiable-icon-wrap {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ios-blue);
+  background: rgba(41, 151, 255, 0.14);
+  border: 0.5px solid rgba(41, 151, 255, 0.28);
+}
+
+.light .habits-non-negotiable-icon-wrap {
+  background: rgba(41, 151, 255, 0.12);
+  border-color: rgba(41, 151, 255, 0.22);
+}
+
+.habits-non-negotiable-text {
+  min-width: 0;
+}
+
+.habits-non-negotiable-eyebrow {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ios-blue);
+}
+
+.habits-non-negotiable-title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.habits-non-negotiable-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
+.habits-non-negotiable-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.habits-non-negotiable-count {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.07);
+  border: 0.5px solid var(--glass-border);
+}
+
+.light .habits-non-negotiable-count {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.habits-non-negotiable-add {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  color: var(--ios-blue);
+  background: rgba(41, 151, 255, 0.12);
+  border: 0.5px solid rgba(41, 151, 255, 0.28);
+}
+
+.habits-non-negotiable-add:hover {
+  background: rgba(41, 151, 255, 0.2);
+}
+
+.light .habits-non-negotiable-add {
+  background: rgba(41, 151, 255, 0.1);
+  border-color: rgba(41, 151, 255, 0.25);
+}
+
+.habits-non-negotiable-empty {
+  margin: 0 2px 0 12px;
+  padding: 22px 18px;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  border: 1px dashed rgba(41, 151, 255, 0.35);
+  background: rgba(41, 151, 255, 0.06);
+}
+
+.light .habits-non-negotiable-empty {
+  background: rgba(41, 151, 255, 0.05);
+  border-color: rgba(41, 151, 255, 0.28);
+}
+
+.habits-non-negotiable-empty-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.habits-non-negotiable-empty-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.habits-non-negotiable-inner {
+  margin-left: 12px;
+  padding: 4px 4px 2px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.12);
+  border: 0.5px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.light .habits-non-negotiable-inner {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.habits-non-negotiable-inner .list-item {
+  border-radius: 10px;
+  padding: 4px 2px;
+}
+
+.habits-non-negotiable-new-row {
+  padding: 10px 12px !important;
+}
+
 .hero-card-compact {
   padding: 12px 18px;
   gap: 8px;
@@ -1880,6 +2060,71 @@ button:active, a:active, [role="button"]:active {
   padding: 0;
 }
 
+/* DatePicker en línea dentro de tareas puntuales: la fila hace wrap y la fecha ocupa todo el ancho */
+.task-form-row:has([data-calendar-inline-open]) {
+  flex-wrap: wrap;
+}
+
+.task-form-row:has([data-calendar-inline-open]) > .task-picker:first-child {
+  flex: 1 1 100%;
+  max-width: 100%;
+  width: 100%;
+}
+
+.date-picker-inline-root {
+  width: 100%;
+  min-width: 0;
+}
+
+.date-picker-inline-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.date-picker-inline-toolbar .link-button {
+  font-size: 13px;
+  padding: 4px 2px;
+}
+
+.date-picker-inline-panel {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Calendario de fecha que sustituye el cuerpo de la tarjeta "Tareas puntuales" */
+.task-punctual-calendar-shell {
+  width: 100%;
+  margin-top: 10px;
+  /* Al hacer scrollIntoView, deja aire bajo el encabezado de la página y safe area */
+  scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 96px);
+  scroll-margin-bottom: 32px;
+}
+
+.hero-card .task-punctual-calendar-panel {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Scroll suave al abrir tareas puntuales (mismo criterio de aire que el calendario) */
+.task-punctual-hero-card {
+  scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 96px);
+  scroll-margin-bottom: 24px;
+}
+
+.events-hero-card {
+  scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 96px);
+  scroll-margin-bottom: 24px;
+}
+
+.events-hero-form-wrap {
+  width: 100%;
+  margin-top: 10px;
+}
+
 .task-form-card {
   position: relative;
   background: var(--glass-bg-base);
@@ -2681,15 +2926,26 @@ button:active, a:active, [role="button"]:active {
   }
 }
 
+/* Día seleccionado: contorno y cifra azules, sin relleno */
 .calendar-day-selected {
-  background: linear-gradient(135deg, var(--ios-blue), var(--ios-indigo)) !important;
-  color: #fff !important;
+  background: transparent !important;
+  color: var(--ios-blue) !important;
   font-weight: 700;
-  box-shadow: 0 4px 12px rgba(41, 151, 255, 0.3);
+  box-shadow: none;
+  border: 1.5px solid var(--ios-blue);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 .light .calendar-day-selected {
-  box-shadow: 0 4px 12px rgba(41, 151, 255, 0.25);
+  background: transparent !important;
+  color: var(--ios-blue) !important;
+  box-shadow: none;
+}
+
+.dark .calendar-day-selected {
+  background: transparent !important;
+  color: var(--ios-blue) !important;
 }
 
 .light .calendar-day-active {
