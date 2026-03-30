@@ -108,11 +108,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const [habits, setHabits] = useState<Habit[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [goals, setGoals] = useState<Goal[]>([]);
-    const [balance, setBalance] = useState(0); // Valor por defecto - reseteado
-    const [income, setIncome] = useState(0); // Valor por defecto - reseteado
-    const [expenses, setExpenses] = useState(0); // Valor por defecto - reseteado
+    const [balance, setBalance] = useState(0);
+    const [income, setIncome] = useState(0);
+    const [expenses, setExpenses] = useState(0);
     
     const loadDataRef = useRef<(() => Promise<void>) | null>(null);
+    const reloadDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const skipInitialSubscribedReloadRef = useRef(true);
     const overviewIdRef = useRef<string | null>(null);
     const recentUpdatesRef = useRef<Map<string, { completed?: boolean; timestamp: number }>>(new Map());
     const migratingTasksRef = useRef(false);
@@ -164,42 +166,22 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }, [balance, income, expenses]);
 
     useEffect(() => {
-        // Función para inicializar datos si no existen
+        // Solo crea fila inicial en app_overview si no existe; nunca sobrescribe datos guardados
         const initializeData = async () => {
             if (!supabase) return;
 
             try {
-                // Verificar si app_overview está vacío
                 const { data: overviewData } = await supabase
                     .from('app_overview')
                     .select('id')
                     .limit(1);
 
                 if (!overviewData || overviewData.length === 0) {
-                    // Insertar datos iniciales (reseteados a 0)
                     await supabase.from('app_overview').insert({
                         balance: 0,
                         income: 0,
                         expenses: 0
                     });
-                } else {
-                    // Actualizar los valores existentes a 0 para resetear finanzas
-                    const { data: existingOverview } = await supabase
-                        .from('app_overview')
-                        .select('id')
-                        .order('updated_at', { ascending: false })
-                        .limit(1)
-                        .single();
-                    
-                    if (existingOverview) {
-                        await supabase.from('app_overview')
-                            .update({
-                                balance: 0,
-                                income: 0,
-                                expenses: 0
-                            })
-                            .eq('id', existingOverview.id);
-                    }
                 }
             } catch (error) {
                 console.warn('No se pudieron inicializar los datos automáticamente:', error);
@@ -234,6 +216,16 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         }
 
         let active = true;
+        const RELOAD_DEBOUNCE_MS = 400;
+
+        const scheduleFullReload = () => {
+            if (!loadDataRef.current || !active) return;
+            if (reloadDebounceRef.current) clearTimeout(reloadDebounceRef.current);
+            reloadDebounceRef.current = setTimeout(() => {
+                reloadDebounceRef.current = null;
+                if (loadDataRef.current && active) void loadDataRef.current();
+            }, RELOAD_DEBOUNCE_MS);
+        };
 
         const loadData = async () => {
             if (!supabase) return;
@@ -292,20 +284,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                 if (transactionsResult.error) {
                     console.error("Error cargando transacciones:", transactionsResult.error);
                 } else {
-                    // Resetear transacciones - empezar desde cero
                     const loadedTransactions = transactionsResult.data ?? [];
-                    // Limpiar todas las transacciones de la BD para empezar desde cero
-                    if (loadedTransactions.length > 0 && supabase) {
-                        try {
-                            const { error: deleteError } = await supabase.from('transactions').delete().neq('id', '');
-                            if (deleteError) {
-                                console.warn('No se pudieron limpiar las transacciones:', deleteError);
-                            }
-                        } catch (error) {
-                            console.warn('No se pudieron limpiar las transacciones:', error);
-                        }
-                    }
-                    setTransactions([]);
+                    setTransactions(
+                        loadedTransactions.map((item: any) => ({
+                            id: String(item.id),
+                            title: item.title ?? "",
+                            category: item.category ?? "",
+                            amount: Number(item.amount ?? 0)
+                        }))
+                    );
                 }
 
                 if (eventsResult.error) {
@@ -450,14 +437,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             };
         }
 
-        // Función helper para recargar datos desde las suscripciones
-        const reloadData = () => {
-            if (loadDataRef.current && active) {
-                // Log deshabilitado para optimizar rendimiento
-                loadDataRef.current();
-            }
-        };
-
         // Usar un solo canal para todas las suscripciones (mejor práctica)
         // Configuración mejorada para sincronización en tiempo real
         const channel = supabase
@@ -508,7 +487,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                                 );
                             }
                             // Si no existe, recargar todo (puede ser un INSERT)
-                            reloadData();
+                            scheduleFullReload();
                             return prev;
                         });
                     } else if (payload.eventType === 'INSERT' && payload.new) {
@@ -545,7 +524,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                 },
                 () => {
                     // Log deshabilitado para optimizar rendimiento
-                    reloadData();
+                    scheduleFullReload();
                 }
             )
             .on(
@@ -589,7 +568,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                                 );
                             }
                             // Si no existe, recargar todo (puede ser un INSERT)
-                            reloadData();
+                            scheduleFullReload();
                             return prev;
                         });
                     } else if (payload.eventType === 'INSERT' && payload.new) {
@@ -627,7 +606,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                     table: 'habits'
                 },
                 (payload) => {
-                    console.log('🎯 Realtime: cambio en habits', payload.eventType, payload.new || payload.old);
                     if (payload.eventType === 'INSERT' && payload.new) {
                         // Agregar el nuevo hábito directamente al estado
                         const habitId = String(payload.new.id);
@@ -635,7 +613,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                         
                         // Si acabamos de crear este hábito nosotros mismos, ignorar el evento de tiempo real
                         if (recentUpdate && Date.now() - recentUpdate.timestamp < 5000) {
-                            console.log('⏭️ Ignorando evento de tiempo real para hábito recién creado localmente:', habitId);
                             return;
                         }
                         
@@ -643,7 +620,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                             // Verificar si ya existe (para evitar duplicados)
                             const existingHabit = prev.find(h => String(h.id) === habitId);
                             if (existingHabit) {
-                                console.log('⏭️ Hábito ya existe localmente, omitiendo:', habitId);
                                 return prev;
                             }
                             // Agregar el nuevo hábito
@@ -655,7 +631,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                                 completed: Boolean(payload.new.completed ?? false),
                                 timestamp: payload.new.created_at ? new Date(payload.new.created_at) : new Date()
                             };
-                            console.log('➕ Agregando hábito desde tiempo real:', newHabit);
                             return [...prev, newHabit];
                         });
                     } else if (payload.eventType === 'UPDATE' && payload.new) {
@@ -664,7 +639,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                         
                         // Si acabamos de actualizar este item nosotros mismos, ignorar el evento de tiempo real
                         if (recentUpdate && Date.now() - recentUpdate.timestamp < 5000) {
-                            console.log('⏭️ Ignorando evento de tiempo real para hábito recién actualizado localmente:', habitId);
                             return;
                         }
                         
@@ -673,7 +647,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                             const existingHabit = prev.find(h => String(h.id) === habitId);
                             if (existingHabit) {
                                 // Solo actualizar si el item ya existe
-                                console.log('✏️ Actualizando hábito desde tiempo real:', habitId);
                                 return prev.map((habit) =>
                                     String(habit.id) === habitId
                                         ? {
@@ -690,19 +663,17 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                                 );
                             }
                             // Si no existe, recargar todo (por si acaso)
-                            console.log('⚠️ Hábito no existe localmente en UPDATE, recargando datos...');
-                            reloadData();
+                            scheduleFullReload();
                             return prev;
                         });
                     } else if (payload.eventType === 'DELETE' && payload.old) {
                         // Eliminar el hábito directamente del estado
                         const habitId = String(payload.old.id);
-                        console.log('🗑️ Eliminando hábito desde tiempo real:', habitId);
                         setHabits((prev) => prev.filter(h => String(h.id) !== habitId));
                     } else {
                         // Para cualquier otro caso, recargar todo
                         // Log deshabilitado para optimizar rendimiento
-                        reloadData();
+                        scheduleFullReload();
                     }
                 }
             )
@@ -721,7 +692,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                         setProjects((prev) => {
                             const exists = prev.find(p => String(p.id) === projectId);
                             if (exists) {
-                                console.log('⏭️ Proyecto ya existe localmente, omitiendo:', projectId);
                                 return prev;
                             }
                             const newProject: Project = {
@@ -735,7 +705,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                                 template: payload.new.template ?? undefined,
                                 created_at: payload.new.created_at
                             };
-                            console.log('➕ Agregando proyecto desde tiempo real:', newProject);
                             return [...prev, newProject];
                         });
                     } else if (payload.eventType === 'UPDATE' && payload.new) {
@@ -743,7 +712,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                         setProjects((prev) => {
                             const existingProject = prev.find(p => String(p.id) === projectId);
                             if (existingProject) {
-                                console.log('✏️ Actualizando proyecto desde tiempo real:', projectId);
                                 return prev.map((p) =>
                                     String(p.id) === projectId
                                         ? {
@@ -760,16 +728,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                                 );
                             }
                             // Si no existe, recargar todo
-                            reloadData();
+                            scheduleFullReload();
                             return prev;
                         });
                     } else if (payload.eventType === 'DELETE' && payload.old) {
                         const projectId = String(payload.old.id);
-                        console.log('🗑️ Eliminando proyecto desde tiempo real:', projectId);
                         setProjects((prev) => prev.filter(p => String(p.id) !== projectId));
                     } else {
                         // Para cualquier otro caso, recargar todo
-                        reloadData();
+                        scheduleFullReload();
                     }
                 }
             )
@@ -782,75 +749,55 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                 },
                 () => {
                     // Log deshabilitado para optimizar rendimiento
-                    reloadData();
+                    scheduleFullReload();
                 }
             )
             .subscribe((status, err) => {
                 if (status === 'SUBSCRIBED') {
-                    console.log('✅ Suscripción Realtime activa - Sincronización en tiempo real conectada');
-                    // Recargar datos al conectarse para asegurar sincronización
-                    if (loadDataRef.current && active) {
-                        loadDataRef.current();
+                    // Evitar segunda recarga completa justo después del loadData inicial
+                    if (skipInitialSubscribedReloadRef.current) {
+                        skipInitialSubscribedReloadRef.current = false;
+                    } else {
+                        scheduleFullReload();
                     }
                 } else if (status === 'CHANNEL_ERROR') {
                     console.error('❌ Error en suscripción Realtime:', err);
-                    // Intentar reconectar después de un delay
                     setTimeout(() => {
-                        if (active && loadDataRef.current) {
-                            loadDataRef.current();
-                        }
+                        if (active) scheduleFullReload();
                     }, 2000);
                 } else if (status === 'TIMED_OUT') {
                     console.warn('⏱️ Timeout en suscripción Realtime - Intentando reconectar...');
-                    // Intentar reconectar
                     setTimeout(() => {
-                        if (active && loadDataRef.current) {
-                            loadDataRef.current();
-                        }
+                        if (active) scheduleFullReload();
                     }, 1000);
                 } else if (status === 'CLOSED') {
                     console.warn('🔒 Canal Realtime cerrado - Intentando reconectar...');
-                    // Intentar reconectar
                     setTimeout(() => {
-                        if (active && loadDataRef.current) {
-                            loadDataRef.current();
-                        }
+                        if (active) scheduleFullReload();
                     }, 1000);
-                } else {
-                    console.log('ℹ️ Estado Realtime:', status);
                 }
             });
 
         // Manejar reconexión cuando vuelva online
-        const handleOnline = async () => {
-            console.log('🌐 Conexión restaurada - Sincronizando datos...');
-            if (loadDataRef.current && active) {
-                // Esperar un momento para asegurar que la conexión esté estable
-                setTimeout(async () => {
-                    if (active && loadDataRef.current) {
-                        await loadDataRef.current();
-                        // Forzar reconexión del canal si está cerrado
-                        if (channel.state !== 'joined') {
-                            channel.subscribe();
-                        }
+        const handleOnline = () => {
+            if (!loadDataRef.current || !active) return;
+            setTimeout(() => {
+                if (!active || !loadDataRef.current) return;
+                void loadDataRef.current().then(() => {
+                    if (channel.state !== 'joined') {
+                        channel.subscribe();
                     }
-                }, 500);
-            }
+                });
+            }, 500);
         };
 
         const handleOffline = () => {
-            console.log('📴 Sin conexión - Modo offline activado');
+            // Sin log en producción: evita ruido en consola
         };
 
-        // Agregar listener para visibilidad de la página (cuando vuelve a estar activa)
         const handleVisibilityChange = () => {
-            if (!document.hidden && active && loadDataRef.current) {
-                console.log('👁️ Página visible - Verificando sincronización...');
-                setTimeout(() => {
-                    if (active && loadDataRef.current) {
-                        loadDataRef.current();
-                    }
-                }, 500);
+            if (!document.hidden && active) {
+                scheduleFullReload();
             }
         };
 
@@ -860,7 +807,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
         return () => {
             active = false;
-            // Limpiar suscripción
+            if (reloadDebounceRef.current) {
+                clearTimeout(reloadDebounceRef.current);
+                reloadDebounceRef.current = null;
+            }
             channel.unsubscribe();
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
@@ -958,10 +908,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (data) {
-                // NO actualizar el estado de nuevo - ya lo actualizamos localmente
-                // Solo verificar que la actualización fue exitosa
-                // Esto evita que Supabase sobrescriba nuestros valores locales (especialmente 'completed')
-                console.log('✅ Tarea actualizada en Supabase:', id);
+                // Estado local ya actualizado; no re-sincronizar para preservar completed optimista
             }
         } catch (error) {
             console.error("Error inesperado actualizando tarea:", error);
@@ -1088,7 +1035,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (data) {
-                console.log('✅ Evento guardado en Supabase:', data.id, 'Fecha:', data.event_date);
                 // Reemplazar evento local con el de la BD (tiene el ID real)
                 setEvents((prev) =>
                     prev.map((e) =>
@@ -1156,10 +1102,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (data) {
-                // NO actualizar el estado de nuevo - ya lo actualizamos localmente
-                // Solo verificar que la actualización fue exitosa
-                // Esto evita que Supabase sobrescriba nuestros valores locales (especialmente 'completed')
-                console.log('✅ Evento actualizado en Supabase:', id);
+                // Estado local ya actualizado
             }
         } catch (error) {
             console.error("Error inesperado actualizando evento:", error);
@@ -1322,10 +1265,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             }
 
             if (data) {
-                // NO actualizar el estado de nuevo - ya lo actualizamos localmente
-                // Solo verificar que la actualización fue exitosa
-                // Esto evita que Supabase sobrescriba nuestros valores locales (especialmente 'completed')
-                console.log('✅ Hábito actualizado en Supabase:', id);
+                // Estado local ya actualizado
             }
         } catch (error) {
             console.error("Error inesperado actualizando hábito:", error);
@@ -1426,7 +1366,6 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                         event_date: eventDate,
                         event_time: ""
                     });
-                    console.log(`✅ Evento creado automáticamente para proyecto: ${project.title} en fecha: ${eventDate}`);
                 } catch (error) {
                     console.error("Error creando evento automático para proyecto:", error);
                 }
@@ -1497,62 +1436,26 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }, [addEvent, supabase]);
 
     const updateProject = useCallback(async (id: string, updates: Partial<Omit<Project, 'id'>>) => {
-        console.log('🔄 ========== INICIO updateProject ==========');
-        console.log('🔄 ID:', id);
-        console.log('🔄 Updates:', updates);
-        
         let previousProject: Project | undefined;
-        
-        // Actualizar estado local INMEDIATAMENTE para respuesta instantánea
+
         setProjects((prev) => {
-            console.log('🔄 Estado anterior - proyectos:', prev.length);
             const project = prev.find((p) => p.id === id);
             previousProject = project;
-            
+
             if (!project) {
-                console.error('❌ Proyecto no encontrado en estado para actualizar:', id);
-                console.error('📋 IDs disponibles:', prev.map(p => p.id));
+                console.error('Proyecto no encontrado en estado para actualizar:', id);
                 return prev;
             }
-            
-            console.log('✅ Proyecto encontrado en estado:', {
-                id: project.id,
-                currentTitle: project.title,
-                newTitle: updates.title
-            });
-            
-            // Crear un nuevo array para forzar el re-render
-            const updated = prev.map((p) => {
-                if (p.id === id) {
-                    const updatedProject = { ...p, ...updates };
-                    console.log('🔄 Proyecto actualizado en estado local:', {
-                        id: updatedProject.id,
-                        title: updatedProject.title,
-                        description: updatedProject.description?.substring(0, 30)
-                    });
-                    return updatedProject;
-                }
-                return p;
-            });
-            
-            console.log('🔄 Estado local actualizado. Total proyectos:', updated.length);
-            return updated;
+
+            return prev.map((p) => (p.id === id ? { ...p, ...updates } : p));
         });
 
         if (!supabase) {
-            console.warn('⚠️ Supabase no está configurado. Los cambios se guardaron solo localmente.');
-            console.log('✅ ========== FIN updateProject (solo local) ==========');
-            // No lanzar error aquí porque el estado local ya se actualizó
-            // El usuario verá los cambios localmente aunque no se guarden en la BD
+            console.warn('Supabase no está configurado. Los cambios quedaron solo en memoria local.');
             return;
         }
 
         try {
-            console.log('📤 Enviando actualización a Supabase...');
-            console.log('📤 Tabla: projects');
-            console.log('📤 ID:', id);
-            console.log('📤 Updates:', JSON.stringify(updates, null, 2));
-            
             const { data, error } = await supabase
                 .from('projects')
                 .update(updates)
@@ -1563,99 +1466,55 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             if (error) {
                 const errorCode = error?.code;
                 const errorMessage = error?.message || '';
-                
-                // Si el error es PGRST205 (tabla no encontrada), mostrar mensaje útil
+
                 if (errorCode === 'PGRST205' || errorMessage.includes('Could not find the table')) {
-                    console.error("❌ Error: La tabla 'projects' no existe en Supabase.");
-                    console.error("📋 Solución: Ve a Supabase Dashboard > SQL Editor");
-                    console.error("📋 Ejecuta el contenido de: supabase/add-projects-table.sql");
+                    console.error("La tabla 'projects' no existe en Supabase. Ejecuta supabase/add-projects-table.sql");
                 } else {
-                    console.error("❌ Error de Supabase:", error);
-                    console.error("❌ Código:", error.code);
-                    console.error("❌ Mensaje:", error.message);
-                    console.error("❌ Detalles:", error.details);
-                    console.error("❌ Hint:", error.hint);
+                    console.error('Error de Supabase al actualizar proyecto:', error);
                 }
-                
-                // Revertir cambio local si falla
+
                 if (previousProject) {
-                    console.log('🔄 Revirtiendo cambio local...');
                     setProjects((prev) =>
                         prev.map((p) => (p.id === id ? previousProject! : p))
                     );
                 }
-                
-                // Lanzar error para que el componente pueda manejarlo
-                const errorMsg = errorCode === 'PGRST205' 
-                    ? "La tabla 'projects' no existe en Supabase. Ejecuta supabase/add-projects-table.sql"
-                    : (error.message || 'Error desconocido al guardar');
-                console.error("❌ Lanzando error:", errorMsg);
+
+                const errorMsg =
+                    errorCode === 'PGRST205'
+                        ? "La tabla 'projects' no existe en Supabase. Ejecuta supabase/add-projects-table.sql"
+                        : (error.message || 'Error desconocido al guardar');
                 throw new Error(`Error al guardar en la base de datos: ${errorMsg}`);
             }
 
             if (data) {
-                console.log('✅ Respuesta de Supabase:', {
-                    id: data.id,
-                    title: data.title,
-                    description: data.description?.substring(0, 50) + '...'
-                });
-                
-                // Actualizar con los datos de la BD para asegurar consistencia
                 setProjects((prev) => {
-                    // Buscar el proyecto que estamos actualizando
-                    const projectIndex = prev.findIndex(p => p.id === id);
-                    
+                    const projectIndex = prev.findIndex((p) => p.id === id);
                     if (projectIndex === -1) {
-                        console.warn('⚠️ Proyecto no encontrado para actualizar con datos de Supabase:', id);
-                        console.warn('📋 IDs disponibles:', prev.map(p => p.id));
+                        console.warn('Proyecto no encontrado para consolidar respuesta de Supabase:', id);
                         return prev;
                     }
-                    
-                    // Crear nueva copia del array para forzar re-render
-                    const updated = prev.map((p, index) => {
-                        if (index === projectIndex) {
-                            const updatedProject = {
-                                ...p,
-                                title: data.title ?? p.title,
-                                description: data.description ?? p.description,
-                                start_date: data.start_date ?? p.start_date,
-                                end_date: data.end_date ?? p.end_date,
-                                status: (data.status ?? p.status) as ProjectStatus,
-                                progress: Number(data.progress ?? p.progress),
-                                template: data.template ?? p.template
-                            };
-                            console.log('✅ Proyecto actualizado en estado:', {
-                                id: updatedProject.id,
-                                title: updatedProject.title,
-                                description: updatedProject.description?.substring(0, 30)
-                            });
-                            return updatedProject;
-                        }
-                        return p;
-                    });
-                    
-                    console.log('✅ Estado actualizado con datos de Supabase. Total proyectos:', updated.length);
-                    return updated;
+                    return prev.map((p, index) =>
+                        index === projectIndex
+                            ? {
+                                  ...p,
+                                  title: data.title ?? p.title,
+                                  description: data.description ?? p.description,
+                                  start_date: data.start_date ?? p.start_date,
+                                  end_date: data.end_date ?? p.end_date,
+                                  status: (data.status ?? p.status) as ProjectStatus,
+                                  progress: Number(data.progress ?? p.progress),
+                                  template: data.template ?? p.template
+                              }
+                            : p
+                    );
                 });
-            } else {
-                console.warn('⚠️ Supabase retornó sin datos');
             }
-            
-            console.log('✅ ========== FIN updateProject (éxito) ==========');
         } catch (error) {
-            console.error("❌ ========== ERROR en updateProject ==========");
-            console.error("❌ Error:", error);
-            console.error("❌ Tipo:", typeof error);
-            
-            // Revertir cambio local si falla
             if (previousProject) {
-                console.log('🔄 Revirtiendo cambio local por error...');
                 setProjects((prev) =>
                     prev.map((p) => (p.id === id ? previousProject! : p))
                 );
             }
-            
-            // Re-lanzar el error para que el componente pueda manejarlo
             throw error;
         }
     }, [supabase]);

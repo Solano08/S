@@ -3544,8 +3544,9 @@ export const Calendar = () => {
     const SwipeEventItem = ({
         event
     }: {
-        event: { id: string; title: string; meta: string; time: string; event_date?: string };
+        event: { id: string; title: string; meta: string; time: string; event_date?: string; completed?: boolean };
     }) => {
+        const isCompleted = Boolean(event.completed);
         return (
             <div 
                 className="day-event-item horizontal"
@@ -3557,20 +3558,21 @@ export const Calendar = () => {
                 }}
             >
                 <button
-                    className="task-complete-button"
+                    type="button"
+                    className={clsx("task-complete-button", isCompleted && "task-complete-button-active")}
                     onClick={(e) => {
                         e.stopPropagation();
                         if (event?.id) {
                             try {
-                                updateEvent(event.id, { completed: true });
+                                updateEvent(event.id, { completed: !isCompleted });
                             } catch (error) {
-                                console.error("Error completando evento:", error);
+                                console.error("Error actualizando estado del evento:", error);
                             }
                         }
                     }}
-                    aria-label="Completar evento"
+                    aria-label={isCompleted ? "Marcar como pendiente" : "Completar evento"}
                 >
-                    <SFCheckCircle size={16} className="task-complete-icon" />
+                    <SFCheckCircle size={16} className={clsx("task-complete-icon", isCompleted && "task-complete-icon-active")} />
                 </button>
                 <div className="day-event-badge">
                     {event?.event_date ? (() => {
@@ -3579,7 +3581,15 @@ export const Calendar = () => {
                     })() : ((today && today instanceof Date && !isNaN(today.getTime())) ? today.getDate() : new Date().getDate())}
                 </div>
                 <div className="day-event-info">
-                    <span className="day-event-title">{event?.title || 'Sin título'}</span>
+                    <span
+                        className="day-event-title"
+                        style={{
+                            textDecoration: isCompleted ? 'line-through' : undefined,
+                            opacity: isCompleted ? 0.72 : 1,
+                        }}
+                    >
+                        {event?.title || 'Sin título'}
+                    </span>
                     <span className="day-event-meta">
                         {event?.event_date ? (() => {
                             const eventDate = parseDateFromString(event.event_date);
@@ -4270,88 +4280,115 @@ export const Calendar = () => {
                                 </div>
                                 {eventDate && (() => {
                                     const selectedDateString = formatDateLocal(eventDate);
-                                    const tasksForDate = safeTasks.filter(task => {
-                                        if (!task) return false;
-                                        const taskDate = extractTaskDate(task);
-                                        return !taskDate || taskDate === selectedDateString || task.meta?.toLowerCase().includes('hoy');
-                                    });
-                                    
-                                    // Filtrar eventos de la fecha seleccionada
-                                    const eventsForDate = safeEvents.filter(event => {
-                                        if (!event || !event.event_date) return false;
-                                        return event.event_date === selectedDateString;
-                                    });
-                                    
+                                    const eventsOnDate = safeEvents.filter(
+                                        (ev) => ev && ev.event_date && ev.event_date === selectedDateString
+                                    );
+                                    const sortByTime = <T extends { event_time?: string }>(arr: T[]) =>
+                                        [...arr].sort((a, b) => (a.event_time || "").localeCompare(b.event_time || ""));
+                                    const eventsCompletedForDate = sortByTime(
+                                        eventsOnDate.filter((ev) => Boolean(ev.completed))
+                                    );
+                                    const eventsPendingForDate = sortByTime(
+                                        eventsOnDate.filter((ev) => !ev.completed)
+                                    );
+
+                                    const blockLabelStyle: React.CSSProperties = {
+                                        fontSize: "13px",
+                                        fontWeight: 600,
+                                        color: "var(--text-secondary)",
+                                        marginBottom: "10px",
+                                        letterSpacing: "-0.2px",
+                                    };
+                                    const subsectionStyle: React.CSSProperties = {
+                                        fontSize: "12px",
+                                        fontWeight: "600",
+                                        color: "var(--text-tertiary)",
+                                        marginBottom: "8px",
+                                        padding: "0 4px",
+                                    };
+                                    const emptyHintStyle: React.CSSProperties = {
+                                        fontSize: "13px",
+                                        color: "var(--text-tertiary)",
+                                        margin: 0,
+                                        padding: "6px 4px 2px",
+                                    };
+
+                                    const mapToSwipeEvent = (ev: (typeof eventsOnDate)[0]) => (
+                                        <SwipeEventItem
+                                            key={ev.id}
+                                            event={{
+                                                id: ev.id || "",
+                                                title: ev.title || "",
+                                                meta: ev.description || "",
+                                                time: ev.event_time || "",
+                                                event_date: ev.event_date,
+                                                completed: Boolean(ev.completed),
+                                            }}
+                                        />
+                                    );
+
                                     return (
                                         <>
-                                            {eventsForDate.length > 0 && (
-                                                <div className="list-card" style={{ marginBottom: '16px' }}>
-                                                    <div style={{ 
-                                                        fontSize: '12px', 
-                                                        fontWeight: '600', 
-                                                        color: 'var(--text-tertiary)', 
-                                                        marginBottom: '8px',
-                                                        padding: '0 4px'
-                                                    }}>
-                                                        Eventos de esta fecha ({eventsForDate.length})
-                                                    </div>
-                                                    <div>
-                                                        {eventsForDate.map((event) => (
-                                                            <SwipeEventItem 
-                                                                key={event.id} 
-                                                                event={{
-                                                                    id: event.id || '',
-                                                                    title: event.title || '',
-                                                                    meta: event.description || '',
-                                                                    time: event.event_time || ''
-                                                                }} 
+                                            <div style={{ marginBottom: "20px" }}>
+                                                <div style={blockLabelStyle}>Añadir nuevo evento</div>
+                                                <div className="event-form-card task-form-card">
+                                                    <div className="task-form-row">
+                                                        <div className="task-picker">
+                                                            <DatePicker
+                                                                value={eventDate ? formatDateLocal(eventDate) : ""}
+                                                                onChange={(v) => setEventDate(parseDateFromString(v))}
+                                                                placeholder="Fecha"
+                                                                taskStyle={true}
                                                             />
-                                                        ))}
+                                                        </div>
+                                                        <div className="task-picker">
+                                                            <TimeSelect value={eventTime} onChange={setEventTime} placeholder="Hora" />
+                                                        </div>
+                                                    </div>
+                                                    <input
+                                                        className="task-input"
+                                                        placeholder="Título del evento"
+                                                        value={eventTitle}
+                                                        onChange={(event) => setEventTitle(event.target.value)}
+                                                    />
+                                                    <textarea
+                                                        className="task-input event-textarea"
+                                                        placeholder="Descripción"
+                                                        value={eventDescription}
+                                                        onChange={(event) => setEventDescription(event.target.value)}
+                                                    />
+                                                    <div className="event-actions">
+                                                        <button
+                                                            type="button"
+                                                            className="task-add-button"
+                                                            onClick={handleSaveEvent}
+                                                        >
+                                                            Guardar evento
+                                                        </button>
                                                     </div>
                                                 </div>
-                                            )}
-                                            {tasksForDate.length > 0 && (
-                                                <div className="list-card" style={{ marginBottom: '16px' }}>
-                                                    {tasksForDate.map((task) => (
-                                                        <SwipeTaskItem key={task.id} task={task} />
-                                                    ))}
+                                            </div>
+
+                                            <div className="list-card" style={{ marginBottom: "16px" }}>
+                                                <div style={subsectionStyle}>
+                                                    Eventos realizados esta fecha ({eventsCompletedForDate.length})
                                                 </div>
-                                            )}
-                                            <div className="event-form-card task-form-card">
-                                                <div className="task-form-row">
-                                                    <div className="task-picker">
-                                                        <DatePicker
-                                                            value={eventDate ? formatDateLocal(eventDate) : ''}
-                                                            onChange={(v) => setEventDate(parseDateFromString(v))}
-                                                            placeholder="Fecha"
-                                                            taskStyle={true}
-                                                        />
-                                                    </div>
-                                                    <div className="task-picker">
-                                                        <TimeSelect value={eventTime} onChange={setEventTime} placeholder="Hora" />
-                                                    </div>
+                                                {eventsCompletedForDate.length > 0 ? (
+                                                    <div>{eventsCompletedForDate.map(mapToSwipeEvent)}</div>
+                                                ) : (
+                                                    <p style={emptyHintStyle}>Ningún evento completado este día.</p>
+                                                )}
+                                            </div>
+
+                                            <div className="list-card" style={{ marginBottom: "4px" }}>
+                                                <div style={subsectionStyle}>
+                                                    Eventos no realizados esta fecha ({eventsPendingForDate.length})
                                                 </div>
-                                                <input
-                                                    className="task-input"
-                                                    placeholder="Título del evento"
-                                                    value={eventTitle}
-                                                    onChange={(event) => setEventTitle(event.target.value)}
-                                                />
-                                                <textarea
-                                                    className="task-input event-textarea"
-                                                    placeholder="Descripción"
-                                                    value={eventDescription}
-                                                    onChange={(event) => setEventDescription(event.target.value)}
-                                                />
-                                                <div className="event-actions">
-                                                    <button 
-                                                        type="button"
-                                                        className="task-add-button" 
-                                                        onClick={handleSaveEvent}
-                                                    >
-                                                        Guardar evento
-                                                    </button>
-                                                </div>
+                                                {eventsPendingForDate.length > 0 ? (
+                                                    <div>{eventsPendingForDate.map(mapToSwipeEvent)}</div>
+                                                ) : (
+                                                    <p style={emptyHintStyle}>No hay eventos pendientes este día.</p>
+                                                )}
                                             </div>
                                         </>
                                     );
