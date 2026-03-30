@@ -29,7 +29,32 @@ export function Home() {
     } catch (error) {
         throw error;
     }
-    const { balance, income, expenses, tasks, events, transactions, addTransaction, goals, addGoal, updateGoal, reorderGoals } = appData;
+    const {
+        balance,
+        income,
+        expenses,
+        tasks,
+        events,
+        transactions,
+        addTransaction,
+        goals,
+        addGoal,
+        updateGoal,
+        reorderGoals,
+        purgeBmwGoals,
+    } = appData;
+
+    /** Misma clave que en Finanzas: la purga BMW solo corre una vez por navegador. */
+    useEffect(() => {
+        const KEY = 'sproject-bmw-goal-purge-v1';
+        try {
+            if (typeof window === 'undefined' || localStorage.getItem(KEY)) return;
+            localStorage.setItem(KEY, '1');
+        } catch {
+            return;
+        }
+        void purgeBmwGoals();
+    }, [purgeBmwGoals]);
     const today = useToday();
     const time = new Date().getHours();
     const greeting = time < 12 ? 'Buenos días' : time < 18 ? 'Buenas tardes' : 'Buenas noches';
@@ -76,7 +101,14 @@ export function Home() {
             else localStorage.removeItem('home-summary-goal-id');
         } catch (_) {}
     }, [summaryGoalId]);
-    
+
+    useEffect(() => {
+        if (!summaryGoalId || !goals?.length) return;
+        if (!goals.some((g) => g && g.id === summaryGoalId)) {
+            setSummaryGoalId(null);
+        }
+    }, [goals, summaryGoalId]);
+
     const { theme } = useTheme();
 
     // Obtener tasa de cambio real para la calculadora de objetivos
@@ -602,7 +634,7 @@ export function Home() {
                             <div className="task-form-card">
                                 <input
                                     className="task-input"
-                                    placeholder="Nombre del objetivo (ej: Dinero para mi BMW 240i)"
+                                    placeholder="Nombre del objetivo (ej: fondo de emergencia)"
                                     value={goalName}
                                     onChange={(e) => setGoalName(e.target.value)}
                                 />

@@ -994,8 +994,47 @@ function PurchaseDetailRow({
     );
 }
 
+/** Evita repetir el reset automático al cambiar de pestaña; borra esta clave en localStorage si quieres volver a ejecutarlo. */
+const FINANCES_VIEW_RESET_STORAGE_KEY = 'sproject-finances-view-reset-v1';
+
+/** Una pasada: borra objetivos cuyo nombre contiene BMW (también si ya corrió el reset de finanzas antes). */
+const BMW_GOAL_PURGE_STORAGE_KEY = 'sproject-bmw-goal-purge-v1';
+
 export const Finances = () => {
-    const { balance, income, expenses, transactions, addTransaction, updateTransaction } = useAppData();
+    const {
+        balance,
+        income,
+        expenses,
+        transactions,
+        addTransaction,
+        updateTransaction,
+        resetFinancesToZero,
+        purgeBmwGoals,
+    } = useAppData();
+
+    useEffect(() => {
+        try {
+            if (typeof window === 'undefined' || localStorage.getItem(FINANCES_VIEW_RESET_STORAGE_KEY)) {
+                return;
+            }
+            localStorage.setItem(FINANCES_VIEW_RESET_STORAGE_KEY, '1');
+        } catch {
+            return;
+        }
+        void resetFinancesToZero();
+    }, [resetFinancesToZero]);
+
+    useEffect(() => {
+        try {
+            if (typeof window === 'undefined' || localStorage.getItem(BMW_GOAL_PURGE_STORAGE_KEY)) {
+                return;
+            }
+            localStorage.setItem(BMW_GOAL_PURGE_STORAGE_KEY, '1');
+        } catch {
+            return;
+        }
+        void purgeBmwGoals();
+    }, [purgeBmwGoals]);
     
     const realInvestmentCategories = ['Cripto', 'Casa', 'Carros', 'Acciones', 'Terrenos', 'Inmuebles', 'Negocios', 'ETF', 'Oro', 'Fondo emergencia', 'Ahorros'];
     const investmentRegistryCategories = [...realInvestmentCategories, 'Inversión', 'Inversiones'];

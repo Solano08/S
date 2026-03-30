@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { saveToCache, getFromCache } from '../utils/localStorageCache';
+import { saveToCache, getFromCache, clearCache } from '../utils/localStorageCache';
 
 type Task = {
     id: string;
@@ -93,6 +93,10 @@ type AppDataContextValue = {
     deleteProject: (id: string) => void;
     addTransaction: (transaction: Omit<Transaction, 'id' | 'created_at'>) => void;
     updateTransaction: (id: string, updates: Partial<Pick<Transaction, 'title'>>) => void;
+    /** Pone balance, ingresos y gastos en 0 y elimina todas las transacciones (local + Supabase + caché). */
+    resetFinancesToZero: () => Promise<void>;
+    /** Elimina objetivos cuyo nombre contiene «BMW» (local + Supabase). */
+    purgeBmwGoals: () => Promise<void>;
     addGoal: (goal: Omit<Goal, 'id' | 'position'>) => void;
     updateGoal: (id: string, updates: Partial<Omit<Goal, 'id'>>) => void;
     deleteGoal: (id: string) => void;
@@ -1674,6 +1678,71 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         [supabase]
     );
 
+    const purgeBmwGoals = useCallback(async () => {
+        setGoals((prev) => prev.filter((g) => !g?.name || !/bmw/i.test(g.name)));
+        if (!supabase) {
+            await loadDataRef.current?.();
+            return;
+        }
+        try {
+            const { error } = await supabase.from('goals').delete().ilike('name', '%BMW%');
+            if (error) console.error('Error borrando objetivos BMW:', error);
+        } catch (e) {
+            console.error('Error inesperado borrando objetivos BMW:', e);
+        }
+        await loadDataRef.current?.();
+    }, []);
+
+    const resetFinancesToZero = useCallback(async () => {
+        setTransactions([]);
+        setGoals((prev) => prev.filter((g) => !g?.name || !/bmw/i.test(g.name)));
+        setBalance(0);
+        setIncome(0);
+        setExpenses(0);
+        clearCache('transactions');
+        clearCache('overview');
+        saveToCache('overview', { balance: 0, income: 0, expenses: 0 });
+
+        if (!supabase) {
+            await loadDataRef.current?.();
+            return;
+        }
+
+        try {
+            const { error: delErr } = await supabase
+                .from('transactions')
+                .delete()
+                .neq('id', '00000000-0000-0000-0000-000000000000');
+            if (delErr) console.error('Error borrando transacciones:', delErr);
+
+            const { error: goalsBmwErr } = await supabase.from('goals').delete().ilike('name', '%BMW%');
+            if (goalsBmwErr) console.error('Error borrando objetivos BMW:', goalsBmwErr);
+
+            let oid = overviewIdRef.current;
+            if (!oid) {
+                const { data: ov } = await supabase
+                    .from('app_overview')
+                    .select('id')
+                    .order('updated_at', { ascending: false })
+                    .limit(1)
+                    .single();
+                oid = (ov as { id?: string } | null)?.id ?? null;
+                if (oid) overviewIdRef.current = oid;
+            }
+            if (oid) {
+                const { error: updErr } = await supabase
+                    .from('app_overview')
+                    .update({ balance: 0, income: 0, expenses: 0 })
+                    .eq('id', oid);
+                if (updErr) console.error('Error reseteando app_overview:', updErr);
+            }
+        } catch (e) {
+            console.error('Error reseteando finanzas:', e);
+        }
+
+        await loadDataRef.current?.();
+    }, []);
+
     const addGoal = useCallback(async (goal: Omit<Goal, 'id' | 'position' | 'current_amount'>) => {
         // Calcular position: siguiente posición en la prioridad
         let newPosition = 0;
@@ -1873,12 +1942,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             deleteProject,
             addTransaction,
             updateTransaction,
+            resetFinancesToZero,
+            purgeBmwGoals,
             addGoal,
             updateGoal,
             deleteGoal,
             reorderGoals
         }),
-        [addEvent, addTask, addHabit, addProject, addTransaction, updateTransaction, balance, deleteEvent, deleteTask, deleteHabit, deleteProject, events, expenses, habits, income, projects, tasks, transactions, updateEvent, updateTask, updateHabit, updateProject, reorderHabits, goals, addGoal, updateGoal, deleteGoal, reorderGoals]
+        [addEvent, addTask, addHabit, addProject, addTransaction, updateTransaction, resetFinancesToZero, purgeBmwGoals, balance, deleteEvent, deleteTask, deleteHabit, deleteProject, events, expenses, habits, income, projects, tasks, transactions, updateEvent, updateTask, updateHabit, updateProject, reorderHabits, goals, addGoal, updateGoal, deleteGoal, reorderGoals]
     );
 
     try {

@@ -1943,6 +1943,7 @@ button:active, a:active, [role="button"]:active {
   min-height: 24px;
   padding: 2px 0;
   font-weight: 600;
+  color: var(--ios-blue);
 }
 
 .calendar-card-compact .calendar-week-grid {
@@ -2880,11 +2881,15 @@ button:active, a:active, [role="button"]:active {
 
 .calendar-day.calendar-day-muted.calendar-weekday-header {
   font-weight: 700 !important;
-  color: #000000 !important;
+  color: var(--ios-blue) !important;
 }
 
 .light .calendar-day.calendar-day-muted.calendar-weekday-header {
-  color: #000000 !important;
+  color: var(--ios-blue) !important;
+}
+
+.dark .calendar-day.calendar-day-muted.calendar-weekday-header {
+  color: var(--ios-blue) !important;
 }
 
 .calendar-day-active {
